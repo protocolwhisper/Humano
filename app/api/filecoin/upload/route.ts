@@ -1,0 +1,121 @@
+import { NextRequest, NextResponse } from "next/server";
+import { Synapse, calibration } from "@filoz/synapse-sdk";
+import { privateKeyToAccount } from "viem/accounts";
+import { http } from "viem";
+
+import type { FilecoinUploadSuccessResponse } from "@/lib/filecoin";
+
+export const runtime = "nodejs";
+
+function readRequiredEnv(name: string) {
+  const value = process.env[name];
+
+  if (!value) {
+    throw new Error(`Missing ${name}.`);
+  }
+
+  return value;
+}
+
+export async function POST(request: NextRequest) {
+  let formData: FormData;
+
+  try {
+    formData = await request.formData();
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "Invalid multipart form data." },
+      { status: 400 },
+    );
+  }
+
+  const file = formData.get("file");
+  const createdAt = formData.get("createdAt");
+  const verificationLevel = formData.get("verificationLevel");
+  const worldAction = formData.get("worldAction");
+
+  if (!(file instanceof File)) {
+    return NextResponse.json(
+      { success: false, error: "Missing photo file." },
+      { status: 400 },
+    );
+  }
+
+  if (
+    typeof createdAt !== "string" ||
+    typeof verificationLevel !== "string" ||
+    typeof worldAction !== "string"
+  ) {
+    return NextResponse.json(
+      { success: false, error: "Missing upload metadata." },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const privateKey = readRequiredEnv("FILECOIN_WALLET_PRIVATE_KEY") as `0x${string}`;
+    const rpcUrl =
+      process.env.FILECOIN_RPC_URL ?? calibration.rpcUrls.default.http[0];
+    const account = privateKeyToAccount(privateKey);
+    const fileBytes = new Uint8Array(await file.arrayBuffer());
+    let transactionHash: string | null = null;
+
+    const synapse = Synapse.create({
+      account,
+      chain: calibration,
+      transport: http(rpcUrl),
+      source: "proofcam-mini-app",
+    });
+
+    const uploadResult = await synapse.storage.upload(fileBytes, {
+      copies: 1,
+      metadata: {
+        app: "proofcam-mini-app",
+        media: "photo",
+      },
+      pieceMetadata: {
+        capturedAt: createdAt,
+        mimeType: file.type || "image/jpeg",
+        originalName: file.name || "capture.jpg",
+        verificationLevel,
+        worldAction,
+      },
+      callbacks: {
+        onPiecesAdded: (hash) => {
+          transactionHash = hash;
+        },
+      },
+    });
+
+    const primaryCopy = uploadResult.copies[0] ?? null;
+
+    const responseBody: FilecoinUploadSuccessResponse = {
+      success: true,
+      filecoin: {
+        status: "uploaded",
+        uploadedAt: new Date().toISOString(),
+        pieceCid: uploadResult.pieceCid.toString(),
+        transactionHash,
+        retrievalUrl: primaryCopy?.retrievalUrl ?? null,
+        providerId: primaryCopy?.providerId.toString() ?? null,
+        dataSetId: primaryCopy?.dataSetId.toString() ?? null,
+        pieceId: primaryCopy?.pieceId.toString() ?? null,
+        copies: uploadResult.copies.length,
+        size: uploadResult.size,
+      },
+    };
+
+    return NextResponse.json(responseBody);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unexpected Filecoin upload error.",
+      },
+      { status: 500 },
+    );
+  }
+}

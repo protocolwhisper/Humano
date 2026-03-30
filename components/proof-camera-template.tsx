@@ -20,8 +20,13 @@ import {
   deletePhoto,
   listPhotos,
   savePhoto,
+  type FilecoinPhotoRecord,
   type StoredPhoto,
 } from "@/lib/photo-store";
+import {
+  humanizeFilecoinError,
+  type FilecoinUploadResponse,
+} from "@/lib/filecoin";
 import {
   getProofConfig,
   isDevBypassEnabled,
@@ -204,6 +209,7 @@ export function ProofCameraTemplate() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isSavingPhoto, setIsSavingPhoto] = useState(false);
   const [isGalleryLoading, setIsGalleryLoading] = useState(true);
+  const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -237,6 +243,14 @@ export function ProofCameraTemplate() {
   function resetMessages() {
     setNotice(null);
     setError(null);
+  }
+
+  function formatCompactHash(value: string) {
+    if (value.length <= 18) {
+      return value;
+    }
+
+    return `${value.slice(0, 10)}...${value.slice(-8)}`;
   }
 
   function updateProofSession(session: ProofSession | null) {
@@ -424,6 +438,7 @@ export function ProofCameraTemplate() {
         createdAt: new Date().toISOString(),
         mimeType: blob.type || "image/jpeg",
         verificationLevel: proofSession.verificationLevel,
+        worldAction: proofSession.action,
         blob,
       };
 
@@ -475,6 +490,56 @@ export function ProofCameraTemplate() {
       setNotice("Photo removed from the local gallery.");
     } catch (deleteError) {
       setError(humanizeError(deleteError));
+    }
+  }
+
+  async function handleUploadToFilecoin(photo: StoredPhoto) {
+    resetMessages();
+    setUploadingPhotoId(photo.id);
+
+    try {
+      const formData = new FormData();
+      const filename = `proofcam-${photo.id}.jpg`;
+      const uploadFile = new File([photo.blob], filename, {
+        type: photo.mimeType,
+      });
+
+      formData.append("file", uploadFile);
+      formData.append("createdAt", photo.createdAt);
+      formData.append("verificationLevel", photo.verificationLevel);
+      formData.append("worldAction", photo.worldAction ?? "unknown-action");
+
+      const response = await fetch("/api/filecoin/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const responseBody = (await response.json()) as FilecoinUploadResponse;
+
+      if (!response.ok || !responseBody.success) {
+        const message =
+          responseBody.success === false
+            ? humanizeFilecoinError(responseBody.error)
+            : "Filecoin upload failed.";
+
+        setError(message);
+        return;
+      }
+
+      const updatedPhoto: StoredPhoto = {
+        ...photo,
+        filecoin: responseBody.filecoin as FilecoinPhotoRecord,
+      };
+
+      await savePhoto(updatedPhoto);
+      await refreshGallery();
+      setNotice(
+        `Photo uploaded to Filecoin Calibration. PieceCID: ${responseBody.filecoin.pieceCid}`,
+      );
+    } catch (uploadError) {
+      setError(humanizeError(uploadError));
+    } finally {
+      setUploadingPhotoId(null);
     }
   }
 
@@ -810,6 +875,12 @@ export function ProofCameraTemplate() {
           stay inside this mini app on the current device until cleared.
         </p>
 
+        <p className="helper">
+          <strong>Optional Filecoin sync:</strong> after a photo is saved
+          locally, you can upload it to Filecoin Calibration through Synapse
+          SDK and keep the returned storage proof details in the gallery.
+        </p>
+
         {cameraError ? <p className="helper">{cameraError}</p> : null}
       </section>
 
@@ -860,6 +931,39 @@ export function ProofCameraTemplate() {
                     <strong>{formatDate(photo.createdAt)}</strong>
                     <span>{proofLabel(photo.verificationLevel)}</span>
                     <span>{photo.mimeType}</span>
+                    {photo.filecoin ? (
+                      <>
+                        <span>
+                          Filecoin PieceCID:{" "}
+                          {formatCompactHash(photo.filecoin.pieceCid)}
+                        </span>
+                        {photo.filecoin.transactionHash ? (
+                          <span>
+                            Tx:{" "}
+                            {formatCompactHash(photo.filecoin.transactionHash)}
+                          </span>
+                        ) : null}
+                      </>
+                    ) : (
+                      <span>Stored locally only</span>
+                    )}
+                  </div>
+                  <div className="button-row">
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => void handleUploadToFilecoin(photo)}
+                      disabled={
+                        uploadingPhotoId === photo.id ||
+                        photo.filecoin?.status === "uploaded"
+                      }
+                    >
+                      {photo.filecoin?.status === "uploaded"
+                        ? "Uploaded to Filecoin"
+                        : uploadingPhotoId === photo.id
+                          ? "Uploading..."
+                          : "Upload to Filecoin"}
+                    </button>
                   </div>
                   <button
                     type="button"

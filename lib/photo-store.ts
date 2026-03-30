@@ -1,11 +1,26 @@
 import { VerificationLevel } from "@worldcoin/minikit-js";
 
+export interface FilecoinPhotoRecord {
+  status: "uploaded";
+  uploadedAt: string;
+  pieceCid: string;
+  transactionHash: string | null;
+  retrievalUrl: string | null;
+  providerId: string | null;
+  dataSetId: string | null;
+  pieceId: string | null;
+  copies: number;
+  size: number;
+}
+
 export interface StoredPhoto {
   id: string;
   createdAt: string;
   mimeType: string;
   verificationLevel: VerificationLevel;
+  worldAction?: string;
   blob: Blob;
+  filecoin?: FilecoinPhotoRecord;
 }
 
 const DATABASE_NAME = "proofcam-mini-app";
