@@ -30,11 +30,21 @@ import {
 
 type ProofSource = "world-id" | "dev-bypass";
 
+interface ProofDecision {
+  isVerified: boolean;
+  allowCamera: boolean;
+  reason: string;
+}
+
 interface ProofSession {
   action: string;
   verificationLevel: VerificationLevel;
   verifiedAt: string;
   source: ProofSource;
+  signal?: string;
+  nullifierHash?: string | null;
+  merkleRoot?: string | null;
+  decision: ProofDecision;
 }
 
 interface PhotoCard extends StoredPhoto {
@@ -42,6 +52,20 @@ interface PhotoCard extends StoredPhoto {
 }
 
 const PROOF_SESSION_KEY = "proofcam-proof-session";
+
+function createDefaultDecision(
+  verificationLevel: VerificationLevel,
+  source: ProofSource,
+): ProofDecision {
+  return {
+    isVerified: true,
+    allowCamera: true,
+    reason:
+      source === "dev-bypass"
+        ? `${proofLabel(verificationLevel)} unlocked with local development bypass.`
+        : `${proofLabel(verificationLevel)} verified and allowed for this action.`,
+  };
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat(undefined, {
@@ -70,7 +94,34 @@ function loadStoredProofSession() {
   }
 
   try {
-    return JSON.parse(raw) as ProofSession;
+    const parsed = JSON.parse(raw) as Partial<ProofSession>;
+
+    if (
+      typeof parsed.action !== "string" ||
+      typeof parsed.verifiedAt !== "string" ||
+      (parsed.source !== "world-id" && parsed.source !== "dev-bypass")
+    ) {
+      window.localStorage.removeItem(PROOF_SESSION_KEY);
+      return null;
+    }
+
+    const verificationLevel =
+      parsed.verificationLevel === VerificationLevel.Orb
+        ? VerificationLevel.Orb
+        : VerificationLevel.Device;
+
+    return {
+      action: parsed.action,
+      verificationLevel,
+      verifiedAt: parsed.verifiedAt,
+      source: parsed.source,
+      signal: parsed.signal,
+      nullifierHash: parsed.nullifierHash ?? null,
+      merkleRoot: parsed.merkleRoot ?? null,
+      decision:
+        parsed.decision ??
+        createDefaultDecision(verificationLevel, parsed.source),
+    };
   } catch {
     window.localStorage.removeItem(PROOF_SESSION_KEY);
     return null;
@@ -199,6 +250,9 @@ export function ProofCameraTemplate() {
       verificationLevel: selectedProof,
       verifiedAt: new Date().toISOString(),
       source: "dev-bypass",
+      nullifierHash: null,
+      merkleRoot: null,
+      decision: createDefaultDecision(selectedProof, "dev-bypass"),
     };
 
     updateProofSession(bypassSession);
@@ -254,30 +308,50 @@ export function ProofCameraTemplate() {
         }),
       });
 
-      const verificationBody = (await verificationResponse.json()) as {
-        success: boolean;
-        error?: string;
-        verifiedAt?: string;
+      const verificationBody = (await verificationResponse.json()) as
+        | {
+            success: false;
+            error?: string;
+          }
+        | {
+            success: true;
+            verifiedAt: string;
+            decision: ProofDecision;
+            proof: {
+              action: string;
+              signal?: string;
+              nullifierHash: string;
+              merkleRoot: string;
+              verificationLevel: VerificationLevel;
+            };
       };
 
       if (!verificationResponse.ok || !verificationBody.success) {
+        const failureMessage =
+          verificationBody.success === false
+            ? verificationBody.error
+            : undefined;
+
         setError(
-          verificationBody.error ??
-            "World ID verification failed on the backend.",
+          failureMessage ?? "World ID verification failed on the backend.",
         );
         return;
       }
 
       const verifiedSession: ProofSession = {
-        action: activeProofConfig.action,
-        verificationLevel: selectedProof,
+        action: verificationBody.proof.action,
+        verificationLevel: verificationBody.proof.verificationLevel,
         verifiedAt: verificationBody.verifiedAt ?? new Date().toISOString(),
         source: "world-id",
+        signal: verificationBody.proof.signal,
+        nullifierHash: verificationBody.proof.nullifierHash,
+        merkleRoot: verificationBody.proof.merkleRoot,
+        decision: verificationBody.decision,
       };
 
       updateProofSession(verifiedSession);
       setNotice(
-        `${proofLabel(selectedProof)} accepted. The camera is now unlocked on this device.`,
+        `${verificationBody.decision.reason}`,
       );
     } catch (verifyError) {
       setError(humanizeError(verifyError));
@@ -518,7 +592,11 @@ export function ProofCameraTemplate() {
 
         <div className="stats-grid">
           <div className="stat-chip">
-            <strong>{proofSession ? proofLabel(proofSession.verificationLevel) : "Locked"}</strong>
+            <strong>
+              {proofSession?.decision.allowCamera
+                ? proofLabel(proofSession.verificationLevel)
+                : "Locked"}
+            </strong>
             <span>
               {proofSession
                 ? `Unlocked ${formatDate(proofSession.verifiedAt)}`
@@ -580,9 +658,9 @@ export function ProofCameraTemplate() {
         </div>
 
         <p className="helper">
-          <strong>Action note:</strong> create one action id for device proof
-          and one for human proof in the World Developer Portal, then place
-          them in <span className="mono">.env.local</span>.
+          <strong>Flow note:</strong> World App returns a proof payload, the
+          server verifies it, and the verified result becomes the app decision
+          to allow camera access.
         </p>
 
         <div className="button-row">
@@ -610,6 +688,44 @@ export function ProofCameraTemplate() {
             <strong>Dev bypass:</strong> enabled for browser preview while you
             wait on real credentials. Turn it off before submission.
           </p>
+        ) : null}
+
+        {proofSession ? (
+          <>
+            <div className="status-row">
+              <span className="pill pill-success">
+                Decision:{" "}
+                <strong>
+                  {proofSession.decision.allowCamera
+                    ? "Allow camera"
+                    : "Block camera"}
+                </strong>
+              </span>
+              <span className="pill">
+                Source:{" "}
+                <strong>
+                  {proofSession.source === "world-id"
+                    ? "Verified proof"
+                    : "Local dev bypass"}
+                </strong>
+              </span>
+            </div>
+
+            <p className="helper">
+              <strong>Reason:</strong> {proofSession.decision.reason}
+            </p>
+
+            {proofSession.nullifierHash ? (
+              <div className="section-stack">
+                <span className="code-chip">
+                  nullifier_hash: {proofSession.nullifierHash}
+                </span>
+                <span className="code-chip">
+                  merkle_root: {proofSession.merkleRoot}
+                </span>
+              </div>
+            ) : null}
+          </>
         ) : null}
       </section>
 

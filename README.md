@@ -27,10 +27,11 @@ NEXT_PUBLIC_ALLOW_DEV_BYPASS=true
 ## How it works
 
 1. User opens the mini app.
-2. User verifies with World ID.
+2. World App generates a proof payload for the requested action.
 3. Device proof is the default option.
-4. After verification, the camera unlocks.
-5. The photo is saved locally in IndexedDB.
+4. The server verifies that proof.
+5. The app turns the verified result into an allow-camera decision.
+6. The photo is saved locally in IndexedDB.
 
 ## Important
 

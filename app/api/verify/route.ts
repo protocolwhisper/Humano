@@ -11,6 +11,24 @@ interface VerifyRequestBody {
   signal?: string;
 }
 
+interface VerifySuccessResponse {
+  success: true;
+  verifiedAt: string;
+  decision: {
+    isVerified: true;
+    allowCamera: true;
+    reason: string;
+  };
+  proof: {
+    action: string;
+    signal?: string;
+    nullifierHash: string;
+    merkleRoot: string;
+    verificationLevel: ISuccessResult["verification_level"];
+  };
+  verifyResponse: IVerifyResponse;
+}
+
 export async function POST(request: NextRequest) {
   let body: VerifyRequestBody;
 
@@ -63,12 +81,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
+    const successResponse: VerifySuccessResponse = {
       success: true,
-      verificationLevel: body.payload.verification_level,
       verifiedAt: new Date().toISOString(),
+      decision: {
+        isVerified: true,
+        allowCamera: true,
+        reason: "World proof verified for this action. Camera access allowed.",
+      },
+      proof: {
+        action: body.action,
+        signal: body.signal,
+        nullifierHash: body.payload.nullifier_hash,
+        merkleRoot: body.payload.merkle_root,
+        verificationLevel: body.payload.verification_level,
+      },
       verifyResponse,
-    });
+    };
+
+    return NextResponse.json(successResponse);
   } catch (error) {
     return NextResponse.json(
       {
