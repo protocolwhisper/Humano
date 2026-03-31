@@ -61,6 +61,26 @@ interface PhotoCard extends StoredPhoto {
 }
 
 const PROOF_SESSION_KEY = "proofcam-proof-session";
+const PROFILE_CALLSIGNS_A = [
+  "Elara",
+  "Nova",
+  "Vanta",
+  "Kairo",
+  "Lyric",
+  "Sable",
+  "Astra",
+  "Cinder",
+];
+const PROFILE_CALLSIGNS_B = [
+  "Vox",
+  "Sync",
+  "Trace",
+  "Pulse",
+  "Grid",
+  "Vector",
+  "Static",
+  "Drift",
+];
 
 function createDefaultDecision(
   verificationLevel: VerificationLevel,
@@ -224,6 +244,46 @@ function humanizeError(error: unknown) {
   return "Something went wrong.";
 }
 
+function seedNumber(seed: string, offset: number) {
+  return Number.parseInt(seed.slice(offset, offset + 6), 16) || 0;
+}
+
+function createProfileIdentity(session: ProofSession | null) {
+  const seed = session?.uploaderKey ?? "feedfacec0de";
+  const first = PROFILE_CALLSIGNS_A[seedNumber(seed, 2) % PROFILE_CALLSIGNS_A.length];
+  const second = PROFILE_CALLSIGNS_B[seedNumber(seed, 10) % PROFILE_CALLSIGNS_B.length];
+  const stamp = `${seed.slice(2, 5).toUpperCase()} ${seed.slice(5, 8).toUpperCase()}`;
+  const handle = `${first}${second}_${seed.slice(8, 11)}`.toLowerCase();
+  const pulseYear = session
+    ? new Date(session.verifiedAt).getFullYear().toString().slice(-2)
+    : "26";
+
+  return {
+    displayName: `${first} ${second}`,
+    handle,
+    stamp,
+    credential:
+      session?.verificationLevel === VerificationLevel.Orb
+        ? "99.9% HUMAN / ORB VERIFIED"
+        : "99.8% HUMAN / DEVICE VERIFIED",
+    intro:
+      session?.verificationLevel === VerificationLevel.Orb
+        ? "Biological signal confirmed in the World Orb network."
+        : "Trusted device signal confirmed through World verification.",
+    pulseLine: `Verified biological pulse since '${pulseYear}.`,
+    story:
+      "Architecting the live feed one frame at a time. Real moments, synced traces, zero synthetic noise.",
+  };
+}
+
+function formatMetricCount(value: number) {
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}K`;
+  }
+
+  return `${value}`;
+}
+
 export function ProofCameraTemplate() {
   const [selectedProof, setSelectedProof] = useState<VerificationLevel>(
     VerificationLevel.Device,
@@ -246,12 +306,25 @@ export function ProofCameraTemplate() {
   const quickCaptureInputRef = useRef<HTMLInputElement | null>(null);
   const photosRef = useRef<PhotoCard[]>([]);
   const activeProofConfig = getProofConfig(selectedProof);
+  const profileIdentity = createProfileIdentity(proofSession);
   const trackedPhotosCount = photos.filter(
     (photo) => photo.humanoProtocol,
   ).length;
+  const filecoinPhotosCount = photos.filter((photo) => photo.filecoin).length;
   const hasAccess = Boolean(proofSession?.decision.allowCamera);
   const selectedPhoto =
     photos.find((photo) => photo.id === selectedPhotoId) ?? photos[0] ?? null;
+  const [profileHistoryMode, setProfileHistoryMode] = useState<"latest" | "archived">(
+    "latest",
+  );
+  const profileHistoryPhotos =
+    profileHistoryMode === "latest" ? photos.slice(0, 5) : photos.slice(5, 10);
+  const featuredProfilePhoto = profileHistoryPhotos[0] ?? selectedPhoto ?? null;
+  const profileThumbPhotos = featuredProfilePhoto
+    ? profileHistoryPhotos
+        .filter((photo) => photo.id !== featuredProfilePhoto.id)
+        .slice(0, 4)
+    : [];
 
   async function refreshGallery(focusedPhotoId?: string | null) {
     setIsGalleryLoading(true);
@@ -660,12 +733,12 @@ export function ProofCameraTemplate() {
 
   function openChainTab() {
     setActiveTab("chain");
-    scrollToSection("capture-panel");
+    scrollToSection("chain-panel");
   }
 
   function openUserTab() {
     setActiveTab("user");
-    scrollToSection("hero-stage");
+    scrollToSection("user-panel");
   }
 
   function openPhoto(photoId: string) {
@@ -809,6 +882,94 @@ export function ProofCameraTemplate() {
       revokePhotoUrls(photosRef.current);
     };
   }, []);
+
+  if (!hasAccess) {
+    return (
+      <div className="login-shell">
+        <header className="login-topbar">
+          <div className="login-brand">
+            <span className="login-brand-mark" />
+            <span className="login-brand-text">HUMANO_PROTOCOL</span>
+          </div>
+        </header>
+
+        <section className="login-hero">
+          <div className="login-eye-shell" aria-hidden="true">
+            <div className="login-eye-core">
+              <div className="login-eye-mark">
+                <span className="login-eye-ring" />
+              </div>
+            </div>
+          </div>
+
+          <div className="login-copy">
+            <h1>ENTER THE PULSE</h1>
+            <p>Human identity verification required</p>
+          </div>
+
+          <div className="login-proof-pills">
+            <button
+              type="button"
+              className={`login-proof-pill ${
+                selectedProof === VerificationLevel.Device ? "active" : ""
+              }`}
+              onClick={() => setSelectedProof(VerificationLevel.Device)}
+            >
+              Device proof
+            </button>
+            <button
+              type="button"
+              className={`login-proof-pill ${
+                selectedProof === VerificationLevel.Orb ? "active" : ""
+              }`}
+              onClick={() => setSelectedProof(VerificationLevel.Orb)}
+            >
+              Orb proof
+            </button>
+          </div>
+
+          <button
+            type="button"
+            className="login-world-button"
+            onClick={() => void handleVerify()}
+            disabled={isVerifying}
+          >
+            <span className="login-world-icon" />
+            <span>{isVerifying ? "Verifying with World ID" : "Sign in with World ID"}</span>
+          </button>
+
+          <p className="login-support-copy">
+            World verification is the only way into this experience. Once verified,
+            the camera, feed, and profile unlock for the current session.
+          </p>
+        </section>
+
+        {notice ? <div className="signal-banner signal-banner-good">{notice}</div> : null}
+        {error ? <div className="signal-banner signal-banner-bad">{error}</div> : null}
+
+        <div className="login-statusbar">
+          <span>HUMAN_VERIFICATION_STANDBY</span>
+          <span>LATENCY: 14MS</span>
+          <span className="login-status-dot" />
+        </div>
+
+        <nav className="login-nav">
+          <button type="button" className="login-nav-item active" aria-label="Login">
+            <span className="login-nav-glyph login-nav-glyph-enter" />
+          </button>
+          <button type="button" className="login-nav-item" aria-label="Identity preview">
+            <span className="login-nav-glyph login-nav-glyph-eye" />
+          </button>
+          <button type="button" className="login-nav-item" aria-label="Timed session">
+            <span className="login-nav-glyph login-nav-glyph-clock" />
+          </button>
+          <button type="button" className="login-nav-item" aria-label="Settings">
+            <span className="login-nav-glyph login-nav-glyph-gear" />
+          </button>
+        </nav>
+      </div>
+    );
+  }
 
   return (
     <div className="kinetic-shell">
@@ -1053,7 +1214,7 @@ export function ProofCameraTemplate() {
           </div>
 
           <div className="camera-panel-dark">
-            <div className="panel-kicker">Signal chain</div>
+            <div className="panel-kicker" id="chain-panel">Signal chain</div>
             <div className="status-stack">
               <div className="signal-row">
                 <span className="signal-tag">WORLD</span>
@@ -1299,6 +1460,163 @@ export function ProofCameraTemplate() {
             <span>
               Verify the session, shoot a photo, then sync it through Filecoin
               and Humano to light up this feed.
+            </span>
+          </div>
+        )}
+      </section>
+
+      <section className="profile-panel" id="user-panel">
+        <div className="profile-topbar">
+          <button
+            type="button"
+            className="profile-icon-button"
+            onClick={openFeedTab}
+            aria-label="Back to feed"
+          >
+            <span className="profile-icon-arrow" />
+          </button>
+          <span className="profile-top-handle">@{profileIdentity.handle}</span>
+          <button
+            type="button"
+            className="profile-icon-button"
+            onClick={openChainTab}
+            aria-label="Open chain view"
+          >
+            <span className="profile-icon-gear" />
+          </button>
+        </div>
+
+        <div className="profile-hero">
+          <div className="profile-avatar-wrap">
+            <div className="profile-avatar-ring">
+              {featuredProfilePhoto ? (
+                <Image
+                  src={featuredProfilePhoto.previewUrl}
+                  alt={profileIdentity.displayName}
+                  width={320}
+                  height={320}
+                  sizes="160px"
+                  className="profile-avatar-image"
+                  unoptimized
+                />
+              ) : (
+                <div className="profile-avatar-fallback">
+                  <span>{profileIdentity.displayName.slice(0, 1)}</span>
+                </div>
+              )}
+            </div>
+            <span className="profile-avatar-stamp">{profileIdentity.stamp}</span>
+          </div>
+
+          <span className="profile-credential-pill">{profileIdentity.credential}</span>
+          <h2 className="profile-display-name">{profileIdentity.displayName}</h2>
+          <div className="profile-handle">@{profileIdentity.handle}</div>
+
+          <div className="profile-bio">
+            <p>{profileIdentity.intro}</p>
+            <p className="profile-bio-highlight">{profileIdentity.pulseLine}</p>
+            <p>{profileIdentity.story}</p>
+          </div>
+
+          <div className="profile-system-strip">
+            <span className="profile-system-dot" />
+            <span>System status: fully verified</span>
+            <span className="profile-system-dot profile-system-dot-right" />
+          </div>
+
+          <div className="profile-metrics">
+            <article className="profile-metric-card">
+              <strong>{formatMetricCount(photos.length)}</strong>
+              <span>Moments</span>
+            </article>
+            <article className="profile-metric-card">
+              <strong>{formatMetricCount(filecoinPhotosCount)}</strong>
+              <span>Synced</span>
+            </article>
+            <article className="profile-metric-card">
+              <strong>{formatMetricCount(trackedPhotosCount)}</strong>
+              <span>Proofs</span>
+            </article>
+          </div>
+        </div>
+
+        <div className="profile-history-head">
+          <div className="profile-history-title">
+            <span className="profile-history-bar" />
+            <div>
+              <span className="panel-kicker">Archive</span>
+              <h3>Proof history</h3>
+            </div>
+          </div>
+
+          <div className="profile-history-switch">
+            <button
+              type="button"
+              className={`profile-history-switch-button ${
+                profileHistoryMode === "latest" ? "active" : ""
+              }`}
+              onClick={() => setProfileHistoryMode("latest")}
+            >
+              Latest
+            </button>
+            <button
+              type="button"
+              className={`profile-history-switch-button ${
+                profileHistoryMode === "archived" ? "active" : ""
+              }`}
+              onClick={() => setProfileHistoryMode("archived")}
+            >
+              Archived
+            </button>
+          </div>
+        </div>
+
+        {featuredProfilePhoto ? (
+          <div className="profile-history-stage">
+            <button
+              type="button"
+              className="profile-feature-card"
+              onClick={() => openPhoto(featuredProfilePhoto.id)}
+            >
+              <Image
+                src={featuredProfilePhoto.previewUrl}
+                alt={`Profile proof ${formatDate(featuredProfilePhoto.createdAt)}`}
+                width={1200}
+                height={1400}
+                sizes="100vw"
+                className="profile-feature-image"
+                unoptimized
+              />
+            </button>
+
+            {profileThumbPhotos.length ? (
+              <div className="profile-history-grid">
+                {profileThumbPhotos.map((photo) => (
+                  <button
+                    key={photo.id}
+                    type="button"
+                    className="profile-thumb-card"
+                    onClick={() => openPhoto(photo.id)}
+                  >
+                    <Image
+                      src={photo.previewUrl}
+                      alt={`Archived proof ${formatDate(photo.createdAt)}`}
+                      width={640}
+                      height={720}
+                      sizes="(max-width: 520px) 44vw, 200px"
+                      className="profile-thumb-image"
+                      unoptimized
+                    />
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="profile-empty-state">
+            <strong>No proof history yet.</strong>
+            <span>
+              Capture a verified moment and the profile archive will light up here.
             </span>
           </div>
         )}
