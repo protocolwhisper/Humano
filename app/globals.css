@@ -191,7 +191,9 @@ video {
 
 .hero-stage,
 .protocol-panel,
-.feed-panel-dark {
+.feed-panel-dark,
+.access-panel,
+.viewer-panel {
   border-radius: 24px;
   background: linear-gradient(180deg, rgba(28, 31, 39, 0.96), rgba(17, 18, 24, 0.98));
   border: 1px solid var(--line-soft);
@@ -306,9 +308,38 @@ video {
 }
 
 .protocol-panel,
-.feed-panel-dark {
+.feed-panel-dark,
+.access-panel,
+.viewer-panel {
   margin-top: 18px;
   padding: 18px;
+}
+
+.access-lede {
+  margin: 14px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.access-steps {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.access-step {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.access-step p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.4;
 }
 
 .panel-kicker {
@@ -514,15 +545,42 @@ video {
   margin-bottom: 24px;
 }
 
+.viewer-stage {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.viewer-media {
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 225, 123, 0.12);
+  background: #090909;
+}
+
+.viewer-media img {
+  width: 100%;
+  aspect-ratio: 0.78;
+  object-fit: cover;
+}
+
+.viewer-body {
+  display: grid;
+  gap: 12px;
+}
+
 .feed-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px 14px;
   margin-top: 18px;
 }
 
 .feed-card {
   display: grid;
+  width: 100%;
+  padding: 0;
+  text-align: left;
   overflow: hidden;
   border-radius: 18px;
   background: #1b1d24;
@@ -530,8 +588,9 @@ video {
   box-shadow: 6px 6px 0 0 var(--accent);
 }
 
-.feed-card:nth-child(2n) {
-  margin-top: 34px;
+.feed-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 158, 26, 0.38), 6px 6px 0 0 var(--accent);
 }
 
 .feed-card-media img {
@@ -703,11 +762,18 @@ video {
     font-size: 3.5rem;
   }
 
-  .feed-card:nth-child(2n) {
-    margin-top: 20px;
-  }
-
   .feed-handle {
     font-size: 1.3rem;
+  }
+}
+
+@media (min-width: 440px) {
+  .viewer-stage {
+    grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+    align-items: start;
+  }
+
+  .feed-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
