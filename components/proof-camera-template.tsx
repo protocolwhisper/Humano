@@ -1156,9 +1156,6 @@ export function ProofCameraTemplate() {
           </div>
         </section>
 
-        {notice ? <div className="signal-banner signal-banner-good">{notice}</div> : null}
-        {error ? <div className="signal-banner signal-banner-bad">{error}</div> : null}
-
         <div className="login-statusbar">
           <span>HUMAN_VERIFICATION_STANDBY</span>
           <span>LATENCY: 14MS</span>
@@ -1179,6 +1176,12 @@ export function ProofCameraTemplate() {
             <span className="login-nav-glyph login-nav-glyph-gear" />
           </button>
         </nav>
+
+        {notice || error ? (
+          <div className={`mobile-toast ${error ? "mobile-toast-error" : ""}`}>
+            {error ?? notice}
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -1203,18 +1206,6 @@ export function ProofCameraTemplate() {
           <span className="brand-sub">protocol</span>
         </div>
       </header>
-
-      <div className="status-ticker">
-        <span className="status-dot" />
-        <span>
-          {proofSession?.decision.allowCamera
-            ? "LIVE VERIFICATION SESSION ACTIVE"
-            : "LIVE VERIFICATION STANDBY"}
-        </span>
-      </div>
-
-      {notice ? <div className="signal-banner signal-banner-good">{notice}</div> : null}
-      {error ? <div className="signal-banner signal-banner-bad">{error}</div> : null}
 
       <div className="app-screen-shell">
         {activeTab === "feed" ? (
@@ -1741,6 +1732,12 @@ export function ProofCameraTemplate() {
           <span className="bottom-nav-label">User</span>
         </button>
       </nav>
+
+      {notice || error ? (
+        <div className={`mobile-toast ${error ? "mobile-toast-error" : ""}`}>
+          {error ?? notice}
+        </div>
+      ) : null}
     </div>
   );
 }
