@@ -289,15 +289,16 @@ video {
 .mobile-toast {
   position: fixed;
   left: 50%;
-  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
-  width: min(452px, calc(100vw - 28px));
-  padding: 12px 14px;
-  border-radius: 16px;
+  width: min(420px, calc(100vw - 34px));
+  padding: 10px 13px;
+  border-radius: 14px;
   border: 1px solid rgba(255, 225, 123, 0.12);
   background: rgba(24, 26, 33, 0.96);
   color: #e7e1d4;
-  line-height: 1.4;
+  font-size: 0.92rem;
+  line-height: 1.35;
   box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
   z-index: 16;
   backdrop-filter: blur(14px);
@@ -315,6 +316,32 @@ video {
 .profile-panel {
   margin-top: 18px;
   padding: 18px;
+}
+
+.feed-overview {
+  display: grid;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.feed-overview-copy h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 0.96;
+  letter-spacing: -0.06em;
+}
+
+.feed-overview-copy p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.42;
+}
+
+.feed-overview-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .access-lede {
@@ -776,12 +803,12 @@ video {
 }
 
 .profile-avatar-ring {
-  width: 128px;
-  height: 128px;
+  width: 104px;
+  height: 104px;
   padding: 4px;
   border-radius: 999px;
   background: linear-gradient(135deg, var(--accent-2), var(--accent));
-  box-shadow: 6px 6px 0 rgba(255, 158, 26, 0.9);
+  box-shadow: 4px 4px 0 rgba(255, 158, 26, 0.84);
 }
 
 .profile-avatar-image,
@@ -802,16 +829,16 @@ video {
   background: radial-gradient(circle at 30% 20%, #425162, #2a313b 70%);
   color: rgba(255, 225, 123, 0.34);
   font-family: var(--font-display);
-  font-size: 3rem;
+  font-size: 2.35rem;
 }
 
 .profile-avatar-stamp {
   position: absolute;
-  left: 24px;
-  bottom: 12px;
+  left: 18px;
+  bottom: 10px;
   color: rgba(255, 225, 123, 0.28);
   font-family: var(--font-display);
-  font-size: 1.45rem;
+  font-size: 1.1rem;
   letter-spacing: -0.04em;
 }
 
@@ -826,17 +853,17 @@ video {
   font-family: var(--font-display);
   font-size: 0.9rem;
   letter-spacing: 0.03em;
-  box-shadow: 5px 5px 0 rgba(255, 158, 26, 0.95);
+  box-shadow: 4px 4px 0 rgba(255, 158, 26, 0.88);
 }
 
 .profile-display-name {
   margin: 2px 0 0;
   color: var(--accent-2);
   font-family: var(--font-display);
-  font-size: clamp(2.8rem, 15vw, 4.2rem);
-  line-height: 0.88;
+  font-size: clamp(2.2rem, 12vw, 3.3rem);
+  line-height: 0.92;
   letter-spacing: -0.08em;
-  text-shadow: 4px 4px 0 rgba(255, 158, 26, 0.96);
+  text-shadow: 2px 2px 0 rgba(255, 158, 26, 0.58);
 }
 
 .profile-handle {
@@ -1085,8 +1112,8 @@ video {
 .social-vibe-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 22px;
+  gap: 12px;
+  margin-top: 18px;
 }
 
 .social-vibe-grid-bottom {
@@ -1094,8 +1121,8 @@ video {
 }
 
 .social-vibe-card {
-  min-height: 174px;
-  padding: 18px;
+  min-height: 134px;
+  padding: 14px;
   border: 0;
   border-radius: 14px;
   background: #1c1e27;
@@ -1109,8 +1136,8 @@ video {
 
 .social-vibe-card strong {
   font-family: var(--font-display);
-  font-size: 2rem;
-  line-height: 0.92;
+  font-size: 1.55rem;
+  line-height: 0.94;
   letter-spacing: -0.05em;
   text-transform: uppercase;
 }
@@ -1142,7 +1169,7 @@ video {
 
 .social-vibe-card-wide {
   grid-column: 1 / -1;
-  min-height: 118px;
+  min-height: 94px;
   background: #24262f;
   display: flex;
   align-items: center;
@@ -1154,7 +1181,7 @@ video {
 }
 
 .social-vibe-card-detail {
-  min-height: 148px;
+  min-height: 118px;
 }
 
 .social-vibe-icon {
@@ -1348,6 +1375,26 @@ video {
   background: #090909;
 }
 
+.viewer-panel {
+  padding-top: 14px;
+}
+
+.viewer-panel .panel-head h2 {
+  font-size: 1.75rem;
+}
+
+.viewer-panel .panel-head {
+  align-items: flex-start;
+}
+
+.viewer-panel .mini-indicators {
+  justify-content: flex-start;
+}
+
+.viewer-panel .feed-handle {
+  font-size: 1.25rem;
+}
+
 .viewer-body {
   display: grid;
   gap: 12px;
@@ -1417,6 +1464,18 @@ video {
 .feed-caption {
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.feed-panel-dark .panel-head h2,
+.profile-panel .panel-head h2,
+.protocol-panel .panel-head h2 {
+  font-size: 1.75rem;
+}
+
+.feed-panel-dark .panel-head,
+.profile-panel .panel-head,
+.protocol-panel .panel-head {
+  align-items: flex-start;
 }
 
 .feed-data {

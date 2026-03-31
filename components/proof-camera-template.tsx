@@ -527,9 +527,7 @@ export function ProofCameraTemplate() {
 
     updateProofSession(bypassSession);
     setActiveTab(hasCompletedInterests ? "feed" : "explore");
-    setNotice(
-      `${proofLabel(selectedProof)} unlocked with local dev bypass. This starts a temporary camera session for testing only.`,
-    );
+    setNotice("Dev bypass active.");
   }
 
   async function handleVerify() {
@@ -646,9 +644,7 @@ export function ProofCameraTemplate() {
 
       updateProofSession(verifiedSession);
       setActiveTab(hasCompletedInterests ? "feed" : "explore");
-      setNotice(
-        `${verificationBody.decision.reason}`,
-      );
+      setNotice("Verified. Camera unlocked.");
     } catch (verifyError) {
       setError(humanizeError(verifyError));
     } finally {
@@ -679,7 +675,7 @@ export function ProofCameraTemplate() {
       await refreshGallery(nextPhoto.id);
       setSelectedPhotoId(nextPhoto.id);
       setActiveTab("feed");
-      setNotice("Photo saved locally inside the mini app.");
+      setNotice("Photo saved.");
     } catch (photoError) {
       setError(humanizeError(photoError));
     } finally {
@@ -706,7 +702,7 @@ export function ProofCameraTemplate() {
     try {
       await deletePhoto(id);
       await refreshGallery();
-      setNotice("Photo removed from the local gallery.");
+      setNotice("Photo removed.");
     } catch (deleteError) {
       setError(humanizeError(deleteError));
     }
@@ -757,10 +753,10 @@ export function ProofCameraTemplate() {
       await refreshGallery();
       setNotice(
         responseBody.humanoProtocol
-          ? `Photo uploaded to Filecoin and recorded on Humano Protocol. PieceCID: ${responseBody.filecoin.pieceCid}`
+          ? "Synced to Filecoin and tracked on Humano."
           : responseBody.humanoProtocolError
-            ? `Photo uploaded to Filecoin, but Humano Protocol tracking failed: ${responseBody.humanoProtocolError}`
-            : `Photo uploaded to Filecoin Calibration. PieceCID: ${responseBody.filecoin.pieceCid}`,
+            ? `Filecoin synced, Humano failed: ${responseBody.humanoProtocolError}`
+            : "Synced to Filecoin.",
       );
     } catch (uploadError) {
       setError(humanizeError(uploadError));
@@ -775,7 +771,7 @@ export function ProofCameraTemplate() {
     try {
       await clearPhotos();
       await refreshGallery();
-      setNotice("Local photo library cleared.");
+      setNotice("Library cleared.");
     } catch (clearError) {
       setError(humanizeError(clearError));
     }
@@ -842,7 +838,7 @@ export function ProofCameraTemplate() {
 
     persistInterests(selectedVibes);
     setActiveTab("feed");
-    setNotice("Feed interests saved. Your profile is now tuned.");
+    setNotice("Interests saved.");
   }
 
   async function handleRecordOnHumano(photo: StoredPhoto) {
@@ -891,9 +887,7 @@ export function ProofCameraTemplate() {
 
       await savePhoto(updatedPhoto);
       await refreshGallery();
-      setNotice(
-        `Photo recorded on Humano Protocol. Upload #${responseBody.humanoProtocol.uploadId}`,
-      );
+      setNotice("Tracked on Humano.");
     } catch (recordError) {
       setError(humanizeError(recordError));
     } finally {
@@ -978,6 +972,28 @@ export function ProofCameraTemplate() {
   useEffect(() => {
     photosRef.current = photos;
   }, [photos]);
+
+  useEffect(() => {
+    if (!notice && !error) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(
+      () => {
+        if (error) {
+          setError(null);
+          return;
+        }
+
+        setNotice(null);
+      },
+      error ? 4200 : 2600,
+    );
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [notice, error]);
 
   useEffect(() => {
     if (!proofSession) {
@@ -1178,31 +1194,16 @@ export function ProofCameraTemplate() {
       <div className="app-screen-shell">
         {activeTab === "feed" ? (
           <div className="app-screen-scroll">
-            <section className="hero-stage">
-              <div className="hero-pill">VERIFIED HUMANS ONLY</div>
-              <div className="hero-copy">
-                <h1>
-                  THE <em>PULSE</em>
-                </h1>
-                <p>
-                  Real people. Real moments. Photos unlock through World verification,
-                  sync to Filecoin, and can be tracked onchain by Humano Protocol.
-                </p>
+            <section className="feed-overview">
+              <div className="feed-overview-copy">
+                <span className="panel-kicker">Verified feed</span>
+                <h2>Captured pulse</h2>
+                <p>Real moments from your verified camera flow, ready for sync and tracking.</p>
               </div>
-
-              <div className="hero-stats">
-                <article className="hero-stat">
-                  <strong>{proofLabel(unlockedSession.verificationLevel)}</strong>
-                  <span>Unlocked {formatDate(unlockedSession.verifiedAt)}</span>
-                </article>
-                <article className="hero-stat">
-                  <strong>{photos.length}</strong>
-                  <span>Captured</span>
-                </article>
-                <article className="hero-stat">
-                  <strong>{trackedPhotosCount}</strong>
-                  <span>Tracked onchain</span>
-                </article>
+              <div className="feed-overview-stats">
+                <span className="mini-indicator">{proofLabel(unlockedSession.verificationLevel)}</span>
+                <span className="mini-indicator">{photos.length} shot{photos.length === 1 ? "" : "s"}</span>
+                <span className="mini-indicator">{trackedPhotosCount} tracked</span>
               </div>
             </section>
 
@@ -1461,7 +1462,7 @@ export function ProofCameraTemplate() {
               <div className="panel-head">
                 <div>
                   <span className="panel-kicker">Signal chain</span>
-                  <h2>Verification stack</h2>
+                  <h2>Proof pipeline</h2>
                 </div>
                 <div className="mini-indicators">
                   <span className="mini-indicator">
@@ -1501,8 +1502,11 @@ export function ProofCameraTemplate() {
               </div>
 
               <div className="hash-block">
-                <span className="mini-indicator">CAMERA SESSION UNLOCKED</span>
-                <p className="micro-copy">{unlockedSession.decision.reason}</p>
+                <span className="mini-indicator">SESSION</span>
+                <p className="micro-copy">
+                  {proofLabel(unlockedSession.verificationLevel)} unlocked on{" "}
+                  {formatDate(unlockedSession.verifiedAt)}.
+                </p>
                 <span className="mono-pill">
                   uploader_key: {formatCompactHash(unlockedSession.uploaderKey)}
                 </span>
