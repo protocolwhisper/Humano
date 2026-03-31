@@ -64,6 +64,7 @@ interface PhotoCard extends StoredPhoto {
 
 const PROOF_SESSION_KEY = "proofcam-proof-session";
 const PROOF_SESSION_NOTICE_KEY = "proofcam-proof-session-notice";
+const PROOF_INTERESTS_KEY = "proofcam-interest-profile";
 const PROOF_SESSION_TTL_MS = 15 * 60 * 1000;
 const PROOF_SESSION_BACKGROUND_GRACE_MS = 75 * 1000;
 const PROFILE_CALLSIGNS_A = [
@@ -272,36 +273,44 @@ function persistProofSession(session: ProofSession | null) {
   window.localStorage.setItem(PROOF_SESSION_KEY, JSON.stringify(session));
 }
 
+function loadStoredInterests() {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  const raw = window.localStorage.getItem(PROOF_INTERESTS_KEY);
+
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+
+    if (!Array.isArray(parsed)) {
+      window.localStorage.removeItem(PROOF_INTERESTS_KEY);
+      return [];
+    }
+
+    return parsed.filter((item): item is string => typeof item === "string");
+  } catch {
+    window.localStorage.removeItem(PROOF_INTERESTS_KEY);
+    return [];
+  }
+}
+
+function persistInterests(interests: string[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(PROOF_INTERESTS_KEY, JSON.stringify(interests));
+}
+
 function revokePhotoUrls(photos: PhotoCard[]) {
   for (const photo of photos) {
     URL.revokeObjectURL(photo.previewUrl);
   }
-}
-
-async function captureVideoFrame(video: HTMLVideoElement) {
-  const width = video.videoWidth || 1080;
-  const height = video.videoHeight || 1440;
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-
-  const context = canvas.getContext("2d");
-
-  if (!context) {
-    throw new Error("Canvas capture is not available.");
-  }
-
-  context.drawImage(video, 0, 0, width, height);
-
-  const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob(resolve, "image/jpeg", 0.92);
-  });
-
-  if (!blob) {
-    throw new Error("Could not capture the current camera frame.");
-  }
-
-  return blob;
 }
 
 function stopActiveStream(
@@ -368,14 +377,8 @@ export function ProofCameraTemplate() {
   const [isGalleryLoading, setIsGalleryLoading] = useState(true);
   const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null);
   const [trackingPhotoId, setTrackingPhotoId] = useState<string | null>(null);
-  const [cameraReady, setCameraReady] = useState(false);
-  const [activeTab, setActiveTab] = useState<"feed" | "capture" | "chain" | "user">("feed");
-  const [selectedVibes, setSelectedVibes] = useState<string[]>([
-    "cyber-art",
-    "humanity",
-    "neon-nights",
-  ]);
-  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"feed" | "explore" | "chain" | "user">("feed");
+  const [selectedVibes, setSelectedVibes] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -389,66 +392,71 @@ export function ProofCameraTemplate() {
   ).length;
   const filecoinPhotosCount = photos.filter((photo) => photo.filecoin).length;
   const hasAccess = Boolean(proofSession?.decision.allowCamera);
+  const hasCompletedInterests = selectedVibes.length >= 3;
   const selectedPhoto =
     photos.find((photo) => photo.id === selectedPhotoId) ?? photos[0] ?? null;
   const recentFeedPhotos = photos.slice(0, 4);
   const vibeCards = [
     {
-      id: "cyber-art",
-      label: "Cyber Art",
+      id: "travel",
+      label: "Travel",
       icon: "palette",
       tone: "bright" as const,
-      subtitle: "Visual identity",
+      subtitle: "Places and movement",
     },
     {
-      id: "analog-sound",
-      label: "Analog Sound",
+      id: "foodie",
+      label: "Foodie",
       icon: "wave",
       tone: "dark" as const,
-      subtitle: "Human frequencies",
+      subtitle: "Taste and culture",
     },
     {
-      id: "humanity",
-      label:
-        proofSession?.verificationLevel === VerificationLevel.Orb
-          ? "Humanity 100%"
-          : "Humanity 99%",
+      id: "street",
+      label: "Street",
       icon: "group",
       tone: "wide" as const,
-      subtitle:
-        proofSession?.verificationLevel === VerificationLevel.Orb
-          ? "Orb-verified signal"
-          : "Trusted device signal",
+      subtitle: "Raw human moments",
     },
     {
-      id: "neon-nights",
-      label: "Neon Nights",
+      id: "music",
+      label: "Music",
       icon: "moon",
       tone: "bright" as const,
-      subtitle: "After-dark pulse",
+      subtitle: "Sound and gigs",
     },
     {
-      id: "digital-rebels",
-      label: "Digital Rebels",
+      id: "art",
+      label: "Art",
       icon: "group",
       tone: "dark" as const,
-      subtitle: `${photos.length} live moment${photos.length === 1 ? "" : "s"}`,
+      subtitle: "Visual culture",
     },
     {
-      id: "retro-tech",
-      label: "Retro Tech",
+      id: "wellness",
+      label: "Wellness",
       icon: "sliders",
       tone: "dark" as const,
-      subtitle: `${filecoinPhotosCount} synced`,
+      subtitle: "Mind and balance",
     },
     {
-      id: "voucher-network",
-      label: "Voucher Network",
+      id: "nightlife",
+      label: "Nightlife",
       icon: "cube",
       tone: "dark" as const,
-      subtitle: `${trackedPhotosCount} proofs tracked`,
+      subtitle: "After-dark energy",
+    },
+    {
+      id: "tech",
+      label: "Tech",
+      icon: "sliders",
+      tone: "dark" as const,
+      subtitle: "Devices and builds",
     },
   ];
+  const selectedInterestCards = vibeCards.filter((card) =>
+    selectedVibes.includes(card.id),
+  );
 
   async function refreshGallery(focusedPhotoId?: string | null) {
     setIsGalleryLoading(true);
@@ -518,7 +526,7 @@ export function ProofCameraTemplate() {
     };
 
     updateProofSession(bypassSession);
-    setActiveTab("capture");
+    setActiveTab(hasCompletedInterests ? "feed" : "explore");
     setNotice(
       `${proofLabel(selectedProof)} unlocked with local dev bypass. This starts a temporary camera session for testing only.`,
     );
@@ -637,7 +645,7 @@ export function ProofCameraTemplate() {
       };
 
       updateProofSession(verifiedSession);
-      setActiveTab("capture");
+      setActiveTab(hasCompletedInterests ? "feed" : "explore");
       setNotice(
         `${verificationBody.decision.reason}`,
       );
@@ -646,56 +654,6 @@ export function ProofCameraTemplate() {
     } finally {
       setIsVerifying(false);
     }
-  }
-
-  async function startCamera() {
-    resetMessages();
-
-    if (!proofSession) {
-      setError("Verify first, then start the camera.");
-      return;
-    }
-
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError(
-        "Live preview is not available here. Use Quick capture to open the device camera instead.",
-      );
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1440 },
-          height: { ideal: 1440 },
-        },
-        audio: false,
-      });
-
-      stopActiveStream(streamRef, videoRef);
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-
-      setCameraReady(true);
-      setCameraError(null);
-      setNotice("Live camera ready.");
-    } catch (streamError) {
-      setCameraReady(false);
-      setCameraError(
-        humanizeError(streamError) ||
-          "Camera access failed. Try Quick capture instead.",
-      );
-    }
-  }
-
-  function stopCamera() {
-    stopActiveStream(streamRef, videoRef);
-    setCameraReady(false);
   }
 
   async function persistPhoto(blob: Blob) {
@@ -726,22 +684,6 @@ export function ProofCameraTemplate() {
       setError(humanizeError(photoError));
     } finally {
       setIsSavingPhoto(false);
-    }
-  }
-
-  async function handleCaptureFrame() {
-    resetMessages();
-
-    if (!videoRef.current) {
-      setError("Start the live camera before capturing a frame.");
-      return;
-    }
-
-    try {
-      const capturedBlob = await captureVideoFrame(videoRef.current);
-      await persistPhoto(capturedBlob);
-    } catch (captureError) {
-      setError(humanizeError(captureError));
     }
   }
 
@@ -847,8 +789,8 @@ export function ProofCameraTemplate() {
     setActiveTab("feed");
   }
 
-  function openCaptureTab() {
-    setActiveTab("capture");
+  function openExploreTab() {
+    setActiveTab("explore");
   }
 
   function openChainTab() {
@@ -864,12 +806,43 @@ export function ProofCameraTemplate() {
     setActiveTab("feed");
   }
 
+  function openCaptureAction() {
+    resetMessages();
+
+    if (!proofSession) {
+      setError("Sign in with World ID first.");
+      return;
+    }
+
+    if (!hasCompletedInterests) {
+      setActiveTab("explore");
+      setError("Pick at least 3 interests first so the feed can be personalized.");
+      return;
+    }
+
+    openQuickCapture();
+  }
+
   function toggleVibe(vibeId: string) {
-    setSelectedVibes((current) =>
-      current.includes(vibeId)
+    setSelectedVibes((current) => {
+      const nextSelection = current.includes(vibeId)
         ? current.filter((item) => item !== vibeId)
-        : [...current, vibeId],
-    );
+        : [...current, vibeId];
+
+      persistInterests(nextSelection);
+      return nextSelection;
+    });
+  }
+
+  function handleCompleteInterests() {
+    if (selectedVibes.length < 3) {
+      setError("Pick at least 3 interests to shape the feed.");
+      return;
+    }
+
+    persistInterests(selectedVibes);
+    setActiveTab("feed");
+    setNotice("Feed interests saved. Your profile is now tuned.");
   }
 
   async function handleRecordOnHumano(photo: StoredPhoto) {
@@ -928,15 +901,6 @@ export function ProofCameraTemplate() {
     }
   }
 
-  function handleResetProof() {
-    resetMessages();
-    stopCamera();
-    updateProofSession(null);
-    setSelectedProof(VerificationLevel.Device);
-    setActiveTab("feed");
-    setNotice("Local proof session reset.");
-  }
-
   useEffect(() => {
     let checks = 0;
     let cancelled = false;
@@ -951,10 +915,15 @@ export function ProofCameraTemplate() {
     }, 250);
 
     const storedSession = loadStoredProofSession();
+    const storedInterests = loadStoredInterests();
     const startupNotice = consumeSessionNotice();
 
     if (startupNotice) {
       setNotice(startupNotice);
+    }
+
+    if (storedInterests.length) {
+      setSelectedVibes(storedInterests);
     }
 
     if (storedSession) {
@@ -962,6 +931,7 @@ export function ProofCameraTemplate() {
       const activeSession = createActiveSession(storedSession);
       setProofSession(activeSession);
       persistProofSession(activeSession);
+      setActiveTab(storedInterests.length >= 3 ? "feed" : "explore");
     }
 
     void (async () => {
@@ -1016,8 +986,6 @@ export function ProofCameraTemplate() {
 
     function expireFromEffect(message: string) {
       stopActiveStream(streamRef, videoRef);
-      setCameraReady(false);
-      setCameraError(null);
       setActiveTab("feed");
       setProofSession(null);
       persistProofSession(null);
@@ -1418,89 +1386,70 @@ export function ProofCameraTemplate() {
           </div>
         ) : null}
 
-        {activeTab === "capture" ? (
+        {activeTab === "explore" ? (
           <div className="app-screen-scroll">
-            <section className="protocol-panel" id="capture-panel">
+            <section className="profile-panel" id="explore-panel">
               <div className="panel-head">
                 <div>
-                  <span className="panel-kicker">Kinetic protocol</span>
-                  <h2>Capture a verified moment</h2>
+                  <span className="panel-kicker">
+                    {hasCompletedInterests ? "Feed inputs" : "First-time setup"}
+                  </span>
+                  <h2>{hasCompletedInterests ? "Your pulse interests" : "Pick your interests"}</h2>
                 </div>
                 <div className="mini-indicators">
-                  <span className="mini-indicator">{activeProofConfig.label}</span>
-                  <span className="mini-indicator mono-pill">{activeProofConfig.action}</span>
+                  <span className="mini-indicator">
+                    {selectedVibes.length} selected
+                  </span>
                 </div>
+              </div>
+
+              <p className="access-lede">
+                {hasCompletedInterests
+                  ? "These interests shape what appears in your feed and how your profile reads."
+                  : "Choose at least 3 interests like travel, foodie, art, or nightlife before you start posting."}
+              </p>
+
+              <div className="social-vibe-grid">
+                {vibeCards.map((card) => (
+                  <button
+                    key={card.id}
+                    type="button"
+                    className={`social-vibe-card social-vibe-card-${card.tone} ${
+                      selectedVibes.includes(card.id) ? "selected" : ""
+                    }`}
+                    onClick={() => toggleVibe(card.id)}
+                  >
+                    <span className={`social-vibe-icon social-vibe-icon-${card.icon}`} />
+                    <strong>{card.label}</strong>
+                    <span>{card.subtitle}</span>
+                  </button>
+                ))}
               </div>
 
               <div className="action-strip">
                 <button
                   type="button"
-                  className="action-button"
-                  onClick={() => void startCamera()}
-                  disabled={!proofSession || cameraReady}
+                  className="action-button action-button-primary"
+                  onClick={handleCompleteInterests}
                 >
-                  START LIVE CAM
+                  {hasCompletedInterests ? "UPDATE INTERESTS" : "SAVE INTERESTS"}
                 </button>
                 <button
                   type="button"
                   className="action-button"
-                  onClick={stopCamera}
-                  disabled={!cameraReady}
+                  onClick={openFeedTab}
+                  disabled={!hasCompletedInterests}
                 >
-                  STOP CAM
+                  GO TO FEED
                 </button>
                 <button
                   type="button"
                   className="action-button"
-                  onClick={handleResetProof}
-                  disabled={!proofSession}
+                  onClick={openCaptureAction}
+                  disabled={!hasCompletedInterests || isSavingPhoto}
                 >
-                  RESET
+                  OPEN CAMERA
                 </button>
-              </div>
-
-              <div className="camera-panel-dark">
-                <div className="panel-kicker">Live capture stage</div>
-                <div className="camera-shell camera-shell-kinetic">
-                  <div className="camera-stage">
-                    {cameraReady ? (
-                      <video
-                        ref={videoRef}
-                        className="camera-video"
-                        autoPlay
-                        playsInline
-                        muted
-                      />
-                    ) : (
-                      <div className="camera-placeholder kinetic-placeholder">
-                        <strong>Session-locked camera stage</strong>
-                        <span>
-                          Use the buttons below to start the camera and capture a new
-                          verified moment.
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="action-strip action-strip-tight">
-                  <button
-                    type="button"
-                    className="action-button action-button-primary"
-                    onClick={() => void handleCaptureFrame()}
-                    disabled={!cameraReady || isSavingPhoto}
-                  >
-                    {isSavingPhoto ? "SAVING..." : "CAPTURE FRAME"}
-                  </button>
-                  <button
-                    type="button"
-                    className="action-button"
-                    onClick={openQuickCapture}
-                    disabled={!proofSession || isSavingPhoto}
-                  >
-                    QUICK CAPTURE
-                  </button>
-                </div>
-                {cameraError ? <p className="micro-copy">{cameraError}</p> : null}
               </div>
             </section>
           </div>
@@ -1575,112 +1524,151 @@ export function ProofCameraTemplate() {
         {activeTab === "user" ? (
           <div className="app-screen-scroll">
             <section className="profile-panel" id="user-panel">
-        <div className="social-topbar">
-          <button
-            type="button"
-            className="icon-button"
-            onClick={openFeedTab}
-            aria-label="Open feed"
-          >
-            <span />
-            <span />
-            <span />
-          </button>
+              <div className="profile-hero">
+                <div className="profile-avatar-wrap">
+                  <div className="profile-avatar-ring">
+                    {selectedPhoto ? (
+                      <Image
+                        src={selectedPhoto.previewUrl}
+                        alt={`${profileIdentity.displayName} avatar`}
+                        width={256}
+                        height={256}
+                        className="profile-avatar-image"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="profile-avatar-fallback">
+                        {profileIdentity.displayName
+                          .split(" ")
+                          .map((part) => part[0])
+                          .join("")}
+                      </div>
+                    )}
+                  </div>
+                  <span className="profile-avatar-stamp">{profileIdentity.stamp}</span>
+                </div>
 
-          <div className="brand-lockup">
-            <span className="brand-mark">PULSE</span>
-          </div>
+                <span className="profile-credential-pill">{profileIdentity.credential}</span>
+                <div>
+                  <h2 className="profile-display-name">{profileIdentity.displayName}</h2>
+                  <div className="profile-handle">@{profileIdentity.handle}</div>
+                </div>
 
-          <button
-            type="button"
-            className="social-skip"
-            onClick={openCaptureTab}
-          >
-            @{profileIdentity.handle}
-          </button>
-        </div>
+                <div className="profile-bio">
+                  <p>{profileIdentity.story}</p>
+                  <p className="profile-bio-highlight">{profileIdentity.pulseLine}</p>
+                  <p>{profileIdentity.intro}</p>
+                </div>
+              </div>
 
-        <div className="social-profile-copy">
-          <h2>PICK YOUR VIBE</h2>
-          <p>
-            Curate the social pulse around your verified identity. Pick the moods
-            that best match how you want this profile to feel.
-          </p>
-        </div>
+              <div className="profile-system-strip">
+                <span className="profile-system-dot" />
+                <span>System status: fully verified</span>
+                <span className="profile-system-dot profile-system-dot-right" />
+              </div>
 
-        <div className="social-vibe-grid">
-          {vibeCards.slice(0, 2).map((card) => (
-            <button
-              key={card.id}
-              type="button"
-              className={`social-vibe-card social-vibe-card-${card.tone} ${
-                selectedVibes.includes(card.id) ? "selected" : ""
-              }`}
-              onClick={() => toggleVibe(card.id)}
-            >
-              <span className={`social-vibe-icon social-vibe-icon-${card.icon}`} />
-              <strong>{card.label}</strong>
-            </button>
-          ))}
+              <div className="profile-metrics">
+                <article className="profile-metric-card">
+                  <strong>{photos.length}</strong>
+                  <span>Shots</span>
+                </article>
+                <article className="profile-metric-card">
+                  <strong>{selectedInterestCards.length}</strong>
+                  <span>Interests</span>
+                </article>
+                <article className="profile-metric-card">
+                  <strong>{trackedPhotosCount}</strong>
+                  <span>Proofs</span>
+                </article>
+              </div>
 
-          <article className="social-vibe-card social-vibe-card-wide">
-            <div>
-              <strong>{vibeCards[2]?.label}</strong>
-              <span>{vibeCards[2]?.subtitle}</span>
-            </div>
-            <span className="social-vibe-icon social-vibe-icon-group" />
-          </article>
+              <div className="profile-history-head">
+                <div className="profile-history-title">
+                  <span className="profile-history-bar" />
+                  <h3>Profile</h3>
+                </div>
+                <div className="profile-history-switch">
+                  <button
+                    type="button"
+                    className="profile-history-switch-button active"
+                    onClick={openExploreTab}
+                  >
+                    Interests
+                  </button>
+                  <button
+                    type="button"
+                    className="profile-history-switch-button"
+                    onClick={openFeedTab}
+                  >
+                    Feed
+                  </button>
+                </div>
+              </div>
 
-          {vibeCards.slice(3, 5).map((card) => (
-            <button
-              key={card.id}
-              type="button"
-              className={`social-vibe-card social-vibe-card-${card.tone} ${
-                selectedVibes.includes(card.id) ? "selected" : ""
-              }`}
-              onClick={() => toggleVibe(card.id)}
-            >
-              <span className={`social-vibe-icon social-vibe-icon-${card.icon}`} />
-              <strong>{card.label}</strong>
-            </button>
-          ))}
-        </div>
+              {selectedInterestCards.length ? (
+                <div className="social-vibe-grid social-vibe-grid-bottom">
+                  {selectedInterestCards.map((card) => (
+                    <article
+                      key={card.id}
+                      className="social-vibe-card social-vibe-card-dark social-vibe-card-detail"
+                    >
+                      <span className={`social-vibe-icon social-vibe-icon-${card.icon}`} />
+                      <strong>{card.label}</strong>
+                      <span>{card.subtitle}</span>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="profile-empty-state">
+                  <strong>No interests picked yet.</strong>
+                  <span>Open Explore and choose at least 3 interests to shape this profile.</span>
+                </div>
+              )}
 
-        <button
-          type="button"
-          className="social-proof-banner"
-          onClick={() => {
-            if (selectedPhoto) {
-              openPhoto(selectedPhoto.id);
-            }
-          }}
-          style={
-            selectedPhoto
-              ? {
-                  backgroundImage: `linear-gradient(180deg, rgba(12, 13, 18, 0.28), rgba(12, 13, 18, 0.9)), url(${selectedPhoto.previewUrl})`,
-                }
-              : undefined
-          }
-        >
-          <span>Street proofs</span>
-        </button>
-
-        <div className="social-vibe-grid social-vibe-grid-bottom">
-          {vibeCards.slice(5).map((card) => (
-            <article
-              key={card.id}
-              className="social-vibe-card social-vibe-card-dark social-vibe-card-detail"
-            >
-              <span className={`social-vibe-icon social-vibe-icon-${card.icon}`} />
-              <strong>{card.label}</strong>
-              <span>{card.subtitle}</span>
-            </article>
-          ))}
-        </div>
-
-        <button type="button" className="social-profile-cta" onClick={openFeedTab}>
-          INITIATE FEED
-        </button>
+              {photos.length ? (
+                <div className="profile-history-stage">
+                  {selectedPhoto ? (
+                    <button
+                      type="button"
+                      className="profile-feature-card"
+                      onClick={() => openPhoto(selectedPhoto.id)}
+                    >
+                      <Image
+                        src={selectedPhoto.previewUrl}
+                        alt={`Featured ${formatDate(selectedPhoto.createdAt)}`}
+                        width={1200}
+                        height={1200}
+                        className="profile-feature-image"
+                        unoptimized
+                      />
+                    </button>
+                  ) : null}
+                  <div className="profile-history-grid">
+                    {photos.slice(0, 4).map((photo) => (
+                      <button
+                        key={photo.id}
+                        type="button"
+                        className="profile-thumb-card"
+                        onClick={() => openPhoto(photo.id)}
+                      >
+                        <Image
+                          src={photo.previewUrl}
+                          alt={`Shot ${formatDate(photo.createdAt)}`}
+                          width={720}
+                          height={720}
+                          className="profile-thumb-image"
+                          unoptimized
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="profile-empty-state">
+                  <strong>No shots yet.</strong>
+                  <span>Use the center camera button to capture your first verified moment.</span>
+                </div>
+              )}
             </section>
           </div>
         ) : null}
@@ -1697,18 +1685,16 @@ export function ProofCameraTemplate() {
         </button>
         <button
           type="button"
-          className="bottom-nav-item"
-          onClick={openFeedTab}
+          className={`bottom-nav-item ${activeTab === "explore" ? "active" : ""}`}
+          onClick={openExploreTab}
         >
           <span className="bottom-nav-icon bottom-nav-icon-discover" />
           <span className="bottom-nav-label">Explore</span>
         </button>
         <button
           type="button"
-          className={`bottom-nav-item bottom-nav-item-capture ${
-            activeTab === "capture" ? "emphasis" : ""
-          }`}
-          onClick={openCaptureTab}
+          className="bottom-nav-item bottom-nav-item-capture emphasis"
+          onClick={openCaptureAction}
         >
           <span className="bottom-nav-capture-badge">
             <span className="bottom-nav-icon bottom-nav-icon-capture" />

@@ -1343,8 +1343,9 @@ video {
 
 .viewer-media img {
   width: 100%;
-  aspect-ratio: 0.78;
-  object-fit: cover;
+  max-height: 48svh;
+  object-fit: contain;
+  background: #090909;
 }
 
 .viewer-body {
@@ -1361,6 +1362,7 @@ video {
 
 .feed-card {
   display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
   width: 100%;
   padding: 0;
   text-align: left;
@@ -1378,14 +1380,16 @@ video {
 
 .feed-card-media img {
   width: 100%;
-  aspect-ratio: 0.73;
+  height: 100%;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
   background: #090909;
 }
 
 .feed-card-body {
   display: grid;
-  gap: 10px;
+  align-content: center;
+  gap: 8px;
   padding: 12px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.08)),
@@ -2105,6 +2109,10 @@ video {
     font-size: 3.5rem;
   }
 
+  .feed-card {
+    grid-template-columns: 92px minmax(0, 1fr);
+  }
+
   .feed-handle {
     font-size: 1.3rem;
   }
@@ -2129,6 +2137,10 @@ video {
   .profile-history-head {
     align-items: start;
     flex-direction: column;
+  }
+
+  .viewer-media img {
+    max-height: 42svh;
   }
 }
 
