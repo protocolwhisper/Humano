@@ -113,6 +113,10 @@ video {
   margin-bottom: 14px;
 }
 
+.kinetic-topbar-centered {
+  justify-content: center;
+}
+
 .icon-button {
   width: 42px;
   height: 42px;
@@ -1489,6 +1493,11 @@ video {
   gap: 12px;
 }
 
+.login-brand-copy {
+  display: grid;
+  gap: 2px;
+}
+
 .login-brand-mark {
   width: 26px;
   height: 26px;
@@ -1522,6 +1531,24 @@ video {
   letter-spacing: -0.05em;
 }
 
+.login-brand-subtext {
+  color: #8f9198;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.login-panel {
+  margin-top: 18px;
+  padding: 22px 18px 18px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 158, 26, 0.11), transparent 24%),
+    linear-gradient(180deg, rgba(22, 23, 30, 0.98), rgba(15, 16, 22, 0.98));
+  box-shadow: var(--shadow);
+}
+
 .login-hero {
   display: grid;
   gap: 18px;
@@ -1529,9 +1556,9 @@ video {
 }
 
 .login-eye-shell {
-  width: min(72vw, 316px);
+  width: min(62vw, 248px);
   aspect-ratio: 1;
-  margin: 6px auto 0;
+  margin: 2px auto 0;
   border-radius: 999px;
   display: grid;
   place-items: center;
@@ -1577,18 +1604,30 @@ video {
 
 .login-copy {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   text-align: center;
+}
+
+.login-kicker {
+  color: var(--accent-2);
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 .login-copy h1 {
   margin: 0;
   color: var(--accent);
   font-family: var(--font-display);
-  font-size: clamp(3.7rem, 18vw, 5.6rem);
-  line-height: 0.84;
+  font-size: clamp(3rem, 15vw, 4.7rem);
+  line-height: 0.86;
   letter-spacing: -0.08em;
-  text-shadow: 4px 4px 0 rgba(255, 225, 123, 0.96);
+  text-shadow: 3px 3px 0 rgba(255, 225, 123, 0.82);
+}
+
+.login-copy h1 span {
+  display: block;
 }
 
 .login-copy p {
@@ -1626,7 +1665,7 @@ video {
 }
 
 .login-world-button {
-  min-height: 92px;
+  min-height: 82px;
   border-radius: 22px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(0, 0, 0, 0.34);
@@ -1638,6 +1677,23 @@ video {
   font-family: "Avenir Next", "Segoe UI", sans-serif;
   font-size: 1.05rem;
   font-weight: 700;
+}
+
+.login-world-copy {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  text-align: left;
+}
+
+.login-world-copy strong {
+  font-size: 1rem;
+}
+
+.login-world-copy small {
+  color: #9fa3ad;
+  font-size: 0.82rem;
+  font-weight: 500;
 }
 
 .login-world-icon {
@@ -1911,11 +1967,149 @@ video {
   font-size: 0.82rem;
   letter-spacing: 0.08em;
   padding: 0;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-width: 56px;
 }
 
 .bottom-nav-item.active,
 .bottom-nav-item.emphasis {
   color: var(--accent-2);
+}
+
+.bottom-nav-label {
+  font-size: 0.76rem;
+  line-height: 1;
+}
+
+.bottom-nav-icon {
+  display: block;
+  position: relative;
+  width: 22px;
+  height: 22px;
+  color: currentColor;
+}
+
+.bottom-nav-icon-feed {
+  box-shadow:
+    inset 0 0 0 2px currentColor,
+    8px 0 0 -6px currentColor,
+    0 8px 0 -6px currentColor,
+    8px 8px 0 -6px currentColor;
+  border-radius: 4px;
+}
+
+.bottom-nav-icon-discover {
+  border: 2px solid currentColor;
+  border-radius: 999px;
+  transform: rotate(20deg);
+}
+
+.bottom-nav-icon-discover::after {
+  content: "";
+  position: absolute;
+  width: 7px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  right: -3px;
+  bottom: 1px;
+  transform: rotate(35deg);
+}
+
+.bottom-nav-item-capture {
+  margin-top: -22px;
+}
+
+.bottom-nav-capture-badge {
+  width: 58px;
+  height: 58px;
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-2);
+  color: #17181f;
+  box-shadow: 6px 6px 0 rgba(255, 158, 26, 0.9);
+}
+
+.bottom-nav-item.emphasis .bottom-nav-capture-badge {
+  transform: translateY(-2px);
+}
+
+.bottom-nav-icon-capture {
+  width: 24px;
+  height: 18px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+
+.bottom-nav-icon-capture::before {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  left: 7px;
+  top: 3px;
+}
+
+.bottom-nav-icon-capture::after {
+  content: "";
+  position: absolute;
+  width: 7px;
+  height: 4px;
+  border-radius: 3px;
+  background: currentColor;
+  right: 1px;
+  top: -2px;
+}
+
+.bottom-nav-icon-chain {
+  border: 2px solid transparent;
+}
+
+.bottom-nav-icon-chain::before,
+.bottom-nav-icon-chain::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  width: 12px;
+  height: 8px;
+  border: 2px solid currentColor;
+  border-radius: 999px;
+}
+
+.bottom-nav-icon-chain::before {
+  top: 2px;
+}
+
+.bottom-nav-icon-chain::after {
+  bottom: 2px;
+}
+
+.bottom-nav-icon-user::before,
+.bottom-nav-icon-user::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.bottom-nav-icon-user::before {
+  top: 1px;
+  width: 10px;
+  height: 10px;
+}
+
+.bottom-nav-icon-user::after {
+  bottom: 1px;
+  width: 18px;
+  height: 9px;
+  border-radius: 999px 999px 5px 5px;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1942,7 +2136,7 @@ video {
   }
 
   .login-copy h1 {
-    font-size: 4rem;
+    font-size: 3.5rem;
   }
 
   .login-statusbar {

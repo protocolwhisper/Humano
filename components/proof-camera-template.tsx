@@ -518,6 +518,7 @@ export function ProofCameraTemplate() {
     };
 
     updateProofSession(bypassSession);
+    setActiveTab("capture");
     setNotice(
       `${proofLabel(selectedProof)} unlocked with local dev bypass. This starts a temporary camera session for testing only.`,
     );
@@ -636,7 +637,7 @@ export function ProofCameraTemplate() {
       };
 
       updateProofSession(verifiedSession);
-      setActiveTab("feed");
+      setActiveTab("capture");
       setNotice(
         `${verificationBody.decision.reason}`,
       );
@@ -1085,60 +1086,74 @@ export function ProofCameraTemplate() {
         <header className="login-topbar">
           <div className="login-brand">
             <span className="login-brand-mark" />
-            <span className="login-brand-text">HUMANO_PROTOCOL</span>
+            <div className="login-brand-copy">
+              <span className="login-brand-text">HUMANO_PROTOCOL</span>
+              <span className="login-brand-subtext">World ID gated camera feed</span>
+            </div>
           </div>
         </header>
 
-        <section className="login-hero">
-          <div className="login-eye-shell" aria-hidden="true">
-            <div className="login-eye-core">
-              <div className="login-eye-mark">
-                <span className="login-eye-ring" />
+        <section className="login-panel">
+          <div className="login-hero">
+            <div className="login-eye-shell" aria-hidden="true">
+              <div className="login-eye-core">
+                <div className="login-eye-mark">
+                  <span className="login-eye-ring" />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="login-copy">
-            <h1>ENTER THE PULSE</h1>
-            <p>Human identity verification required</p>
-          </div>
+            <div className="login-copy">
+              <span className="login-kicker">Verified humans only</span>
+              <h1>
+                <span>Enter</span>
+                <span>The Pulse</span>
+              </h1>
+              <p>Human identity verification required</p>
+            </div>
 
-          <div className="login-proof-pills">
+            <div className="login-proof-pills">
+              <button
+                type="button"
+                className={`login-proof-pill ${
+                  selectedProof === VerificationLevel.Device ? "active" : ""
+                }`}
+                onClick={() => setSelectedProof(VerificationLevel.Device)}
+              >
+                Device proof
+              </button>
+              <button
+                type="button"
+                className={`login-proof-pill ${
+                  selectedProof === VerificationLevel.Orb ? "active" : ""
+                }`}
+                onClick={() => setSelectedProof(VerificationLevel.Orb)}
+              >
+                Orb proof
+              </button>
+            </div>
+
             <button
               type="button"
-              className={`login-proof-pill ${
-                selectedProof === VerificationLevel.Device ? "active" : ""
-              }`}
-              onClick={() => setSelectedProof(VerificationLevel.Device)}
+              className="login-world-button"
+              onClick={() => void handleVerify()}
+              disabled={isVerifying}
             >
-              Device proof
+              <span className="login-world-icon" />
+              <span className="login-world-copy">
+                <strong>
+                  {isVerifying ? "Verifying with World ID" : "Sign in with World ID"}
+                </strong>
+                <small>Unlock a short verified camera session</small>
+              </span>
             </button>
-            <button
-              type="button"
-              className={`login-proof-pill ${
-                selectedProof === VerificationLevel.Orb ? "active" : ""
-              }`}
-              onClick={() => setSelectedProof(VerificationLevel.Orb)}
-            >
-              Orb proof
-            </button>
+
+            <p className="login-support-copy">
+              World verification is the only way into this experience. Once verified,
+              the camera, feed, and profile unlock for a short live session and
+              reset shortly after you leave the mini app.
+            </p>
           </div>
-
-          <button
-            type="button"
-            className="login-world-button"
-            onClick={() => void handleVerify()}
-            disabled={isVerifying}
-          >
-            <span className="login-world-icon" />
-            <span>{isVerifying ? "Verifying with World ID" : "Sign in with World ID"}</span>
-          </button>
-
-          <p className="login-support-copy">
-            World verification is the only way into this experience. Once verified,
-            the camera, feed, and profile unlock for a short live session and
-            reset shortly after you leave the mini app.
-          </p>
         </section>
 
         {notice ? <div className="signal-banner signal-banner-good">{notice}</div> : null}
@@ -1182,31 +1197,11 @@ export function ProofCameraTemplate() {
         onChange={(event) => void handleQuickCapture(event)}
       />
 
-      <header className="kinetic-topbar" id="hero-stage">
-        <button
-          type="button"
-          className="icon-button"
-          aria-label="Open feed"
-          onClick={openFeedTab}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
-
+      <header className="kinetic-topbar kinetic-topbar-centered" id="hero-stage">
         <div className="brand-lockup">
           <span className="brand-mark">HUMANO</span>
           <span className="brand-sub">protocol</span>
         </div>
-
-        <button
-          type="button"
-          className="icon-button"
-          aria-label="Open capture"
-          onClick={openCaptureTab}
-        >
-          <span className="icon-ring" />
-        </button>
       </header>
 
       <div className="status-ticker">
@@ -1217,42 +1212,6 @@ export function ProofCameraTemplate() {
             : "LIVE VERIFICATION STANDBY"}
         </span>
       </div>
-
-      <section className="hero-stage">
-        <div className="hero-pill">VERIFIED HUMANS ONLY</div>
-        <div className="hero-copy">
-          <h1>
-            THE <em>PULSE</em>
-          </h1>
-          <p>
-            Real people. Real moments. Photos unlock through World verification,
-            sync to Filecoin, and can be tracked onchain by Humano Protocol.
-          </p>
-        </div>
-
-        <div className="hero-stats">
-          <article className="hero-stat">
-            <strong>
-              {proofSession?.decision.allowCamera
-                ? proofLabel(proofSession.verificationLevel)
-                : "Locked"}
-            </strong>
-            <span>
-              {proofSession
-                ? `Unlocked ${formatDate(proofSession.verifiedAt)}`
-                : "Verify to unlock session"}
-            </span>
-          </article>
-          <article className="hero-stat">
-            <strong>{photos.length}</strong>
-            <span>{photos.length === 1 ? "Captured" : "Captured"}</span>
-          </article>
-          <article className="hero-stat">
-            <strong>{trackedPhotosCount}</strong>
-            <span>Tracked onchain</span>
-          </article>
-        </div>
-      </section>
 
       {notice ? <div className="signal-banner signal-banner-good">{notice}</div> : null}
       {error ? <div className="signal-banner signal-banner-bad">{error}</div> : null}
@@ -1742,35 +1701,44 @@ export function ProofCameraTemplate() {
           className={`bottom-nav-item ${activeTab === "feed" ? "active" : ""}`}
           onClick={openFeedTab}
         >
-          FEED
+          <span className="bottom-nav-icon bottom-nav-icon-feed" />
+          <span className="bottom-nav-label">Feed</span>
         </button>
         <button
           type="button"
           className="bottom-nav-item"
           onClick={openFeedTab}
         >
-          EXPLORE
+          <span className="bottom-nav-icon bottom-nav-icon-discover" />
+          <span className="bottom-nav-label">Explore</span>
         </button>
         <button
           type="button"
-          className={`bottom-nav-item ${activeTab === "capture" ? "emphasis" : ""}`}
+          className={`bottom-nav-item bottom-nav-item-capture ${
+            activeTab === "capture" ? "emphasis" : ""
+          }`}
           onClick={openCaptureTab}
         >
-          CAPTURE
+          <span className="bottom-nav-capture-badge">
+            <span className="bottom-nav-icon bottom-nav-icon-capture" />
+          </span>
+          <span className="bottom-nav-label">Capture</span>
         </button>
         <button
           type="button"
           className={`bottom-nav-item ${activeTab === "chain" ? "active" : ""}`}
           onClick={openChainTab}
         >
-          CHAIN
+          <span className="bottom-nav-icon bottom-nav-icon-chain" />
+          <span className="bottom-nav-label">Chain</span>
         </button>
         <button
           type="button"
           className={`bottom-nav-item ${activeTab === "user" ? "active" : ""}`}
           onClick={openUserTab}
         >
-          USER
+          <span className="bottom-nav-icon bottom-nav-icon-user" />
+          <span className="bottom-nav-label">User</span>
         </button>
       </nav>
     </div>
