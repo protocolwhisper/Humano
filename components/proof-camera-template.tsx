@@ -276,14 +276,6 @@ function createProfileIdentity(session: ProofSession | null) {
   };
 }
 
-function formatMetricCount(value: number) {
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}K`;
-  }
-
-  return `${value}`;
-}
-
 export function ProofCameraTemplate() {
   const [selectedProof, setSelectedProof] = useState<VerificationLevel>(
     VerificationLevel.Device,
@@ -298,6 +290,11 @@ export function ProofCameraTemplate() {
   const [trackingPhotoId, setTrackingPhotoId] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [activeTab, setActiveTab] = useState<"feed" | "capture" | "chain" | "user">("feed");
+  const [selectedVibes, setSelectedVibes] = useState<string[]>([
+    "cyber-art",
+    "humanity",
+    "neon-nights",
+  ]);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -314,17 +311,63 @@ export function ProofCameraTemplate() {
   const hasAccess = Boolean(proofSession?.decision.allowCamera);
   const selectedPhoto =
     photos.find((photo) => photo.id === selectedPhotoId) ?? photos[0] ?? null;
-  const [profileHistoryMode, setProfileHistoryMode] = useState<"latest" | "archived">(
-    "latest",
-  );
-  const profileHistoryPhotos =
-    profileHistoryMode === "latest" ? photos.slice(0, 5) : photos.slice(5, 10);
-  const featuredProfilePhoto = profileHistoryPhotos[0] ?? selectedPhoto ?? null;
-  const profileThumbPhotos = featuredProfilePhoto
-    ? profileHistoryPhotos
-        .filter((photo) => photo.id !== featuredProfilePhoto.id)
-        .slice(0, 4)
-    : [];
+  const vibeCards = [
+    {
+      id: "cyber-art",
+      label: "Cyber Art",
+      icon: "palette",
+      tone: "bright" as const,
+      subtitle: "Visual identity",
+    },
+    {
+      id: "analog-sound",
+      label: "Analog Sound",
+      icon: "wave",
+      tone: "dark" as const,
+      subtitle: "Human frequencies",
+    },
+    {
+      id: "humanity",
+      label:
+        proofSession?.verificationLevel === VerificationLevel.Orb
+          ? "Humanity 100%"
+          : "Humanity 99%",
+      icon: "group",
+      tone: "wide" as const,
+      subtitle:
+        proofSession?.verificationLevel === VerificationLevel.Orb
+          ? "Orb-verified signal"
+          : "Trusted device signal",
+    },
+    {
+      id: "neon-nights",
+      label: "Neon Nights",
+      icon: "moon",
+      tone: "bright" as const,
+      subtitle: "After-dark pulse",
+    },
+    {
+      id: "digital-rebels",
+      label: "Digital Rebels",
+      icon: "group",
+      tone: "dark" as const,
+      subtitle: `${photos.length} live moment${photos.length === 1 ? "" : "s"}`,
+    },
+    {
+      id: "retro-tech",
+      label: "Retro Tech",
+      icon: "sliders",
+      tone: "dark" as const,
+      subtitle: `${filecoinPhotosCount} synced`,
+    },
+    {
+      id: "voucher-network",
+      label: "Voucher Network",
+      icon: "cube",
+      tone: "dark" as const,
+      subtitle: `${trackedPhotosCount} proofs tracked`,
+    },
+  ];
 
   async function refreshGallery(focusedPhotoId?: string | null) {
     setIsGalleryLoading(true);
@@ -745,6 +788,14 @@ export function ProofCameraTemplate() {
     setSelectedPhotoId(photoId);
     setActiveTab("feed");
     scrollToSection("viewer-panel");
+  }
+
+  function toggleVibe(vibeId: string) {
+    setSelectedVibes((current) =>
+      current.includes(vibeId)
+        ? current.filter((item) => item !== vibeId)
+        : [...current, vibeId],
+    );
   }
 
   async function handleRecordOnHumano(photo: StoredPhoto) {
@@ -1466,160 +1517,112 @@ export function ProofCameraTemplate() {
       </section>
 
       <section className="profile-panel" id="user-panel">
-        <div className="profile-topbar">
+        <div className="social-topbar">
           <button
             type="button"
-            className="profile-icon-button"
+            className="icon-button"
             onClick={openFeedTab}
-            aria-label="Back to feed"
+            aria-label="Open feed"
           >
-            <span className="profile-icon-arrow" />
+            <span />
+            <span />
+            <span />
           </button>
-          <span className="profile-top-handle">@{profileIdentity.handle}</span>
+
+          <div className="brand-lockup">
+            <span className="brand-mark">PULSE</span>
+          </div>
+
           <button
             type="button"
-            className="profile-icon-button"
-            onClick={openChainTab}
-            aria-label="Open chain view"
+            className="social-skip"
+            onClick={openCaptureTab}
           >
-            <span className="profile-icon-gear" />
+            @{profileIdentity.handle}
           </button>
         </div>
 
-        <div className="profile-hero">
-          <div className="profile-avatar-wrap">
-            <div className="profile-avatar-ring">
-              {featuredProfilePhoto ? (
-                <Image
-                  src={featuredProfilePhoto.previewUrl}
-                  alt={profileIdentity.displayName}
-                  width={320}
-                  height={320}
-                  sizes="160px"
-                  className="profile-avatar-image"
-                  unoptimized
-                />
-              ) : (
-                <div className="profile-avatar-fallback">
-                  <span>{profileIdentity.displayName.slice(0, 1)}</span>
-                </div>
-              )}
-            </div>
-            <span className="profile-avatar-stamp">{profileIdentity.stamp}</span>
-          </div>
-
-          <span className="profile-credential-pill">{profileIdentity.credential}</span>
-          <h2 className="profile-display-name">{profileIdentity.displayName}</h2>
-          <div className="profile-handle">@{profileIdentity.handle}</div>
-
-          <div className="profile-bio">
-            <p>{profileIdentity.intro}</p>
-            <p className="profile-bio-highlight">{profileIdentity.pulseLine}</p>
-            <p>{profileIdentity.story}</p>
-          </div>
-
-          <div className="profile-system-strip">
-            <span className="profile-system-dot" />
-            <span>System status: fully verified</span>
-            <span className="profile-system-dot profile-system-dot-right" />
-          </div>
-
-          <div className="profile-metrics">
-            <article className="profile-metric-card">
-              <strong>{formatMetricCount(photos.length)}</strong>
-              <span>Moments</span>
-            </article>
-            <article className="profile-metric-card">
-              <strong>{formatMetricCount(filecoinPhotosCount)}</strong>
-              <span>Synced</span>
-            </article>
-            <article className="profile-metric-card">
-              <strong>{formatMetricCount(trackedPhotosCount)}</strong>
-              <span>Proofs</span>
-            </article>
-          </div>
+        <div className="social-profile-copy">
+          <h2>PICK YOUR VIBE</h2>
+          <p>
+            Curate the social pulse around your verified identity. Pick the moods
+            that best match how you want this profile to feel.
+          </p>
         </div>
 
-        <div className="profile-history-head">
-          <div className="profile-history-title">
-            <span className="profile-history-bar" />
+        <div className="social-vibe-grid">
+          {vibeCards.slice(0, 2).map((card) => (
+            <button
+              key={card.id}
+              type="button"
+              className={`social-vibe-card social-vibe-card-${card.tone} ${
+                selectedVibes.includes(card.id) ? "selected" : ""
+              }`}
+              onClick={() => toggleVibe(card.id)}
+            >
+              <span className={`social-vibe-icon social-vibe-icon-${card.icon}`} />
+              <strong>{card.label}</strong>
+            </button>
+          ))}
+
+          <article className="social-vibe-card social-vibe-card-wide">
             <div>
-              <span className="panel-kicker">Archive</span>
-              <h3>Proof history</h3>
+              <strong>{vibeCards[2]?.label}</strong>
+              <span>{vibeCards[2]?.subtitle}</span>
             </div>
-          </div>
+            <span className="social-vibe-icon social-vibe-icon-group" />
+          </article>
 
-          <div className="profile-history-switch">
+          {vibeCards.slice(3, 5).map((card) => (
             <button
+              key={card.id}
               type="button"
-              className={`profile-history-switch-button ${
-                profileHistoryMode === "latest" ? "active" : ""
+              className={`social-vibe-card social-vibe-card-${card.tone} ${
+                selectedVibes.includes(card.id) ? "selected" : ""
               }`}
-              onClick={() => setProfileHistoryMode("latest")}
+              onClick={() => toggleVibe(card.id)}
             >
-              Latest
+              <span className={`social-vibe-icon social-vibe-icon-${card.icon}`} />
+              <strong>{card.label}</strong>
             </button>
-            <button
-              type="button"
-              className={`profile-history-switch-button ${
-                profileHistoryMode === "archived" ? "active" : ""
-              }`}
-              onClick={() => setProfileHistoryMode("archived")}
-            >
-              Archived
-            </button>
-          </div>
+          ))}
         </div>
 
-        {featuredProfilePhoto ? (
-          <div className="profile-history-stage">
-            <button
-              type="button"
-              className="profile-feature-card"
-              onClick={() => openPhoto(featuredProfilePhoto.id)}
-            >
-              <Image
-                src={featuredProfilePhoto.previewUrl}
-                alt={`Profile proof ${formatDate(featuredProfilePhoto.createdAt)}`}
-                width={1200}
-                height={1400}
-                sizes="100vw"
-                className="profile-feature-image"
-                unoptimized
-              />
-            </button>
+        <button
+          type="button"
+          className="social-proof-banner"
+          onClick={() => {
+            if (selectedPhoto) {
+              openPhoto(selectedPhoto.id);
+            }
+          }}
+          style={
+            selectedPhoto
+              ? {
+                  backgroundImage: `linear-gradient(180deg, rgba(12, 13, 18, 0.28), rgba(12, 13, 18, 0.9)), url(${selectedPhoto.previewUrl})`,
+                }
+              : undefined
+          }
+        >
+          <span>Street proofs</span>
+        </button>
 
-            {profileThumbPhotos.length ? (
-              <div className="profile-history-grid">
-                {profileThumbPhotos.map((photo) => (
-                  <button
-                    key={photo.id}
-                    type="button"
-                    className="profile-thumb-card"
-                    onClick={() => openPhoto(photo.id)}
-                  >
-                    <Image
-                      src={photo.previewUrl}
-                      alt={`Archived proof ${formatDate(photo.createdAt)}`}
-                      width={640}
-                      height={720}
-                      sizes="(max-width: 520px) 44vw, 200px"
-                      className="profile-thumb-image"
-                      unoptimized
-                    />
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <div className="profile-empty-state">
-            <strong>No proof history yet.</strong>
-            <span>
-              Capture a verified moment and the profile archive will light up here.
-            </span>
-          </div>
-        )}
+        <div className="social-vibe-grid social-vibe-grid-bottom">
+          {vibeCards.slice(5).map((card) => (
+            <article
+              key={card.id}
+              className="social-vibe-card social-vibe-card-dark social-vibe-card-detail"
+            >
+              <span className={`social-vibe-icon social-vibe-icon-${card.icon}`} />
+              <strong>{card.label}</strong>
+              <span>{card.subtitle}</span>
+            </article>
+          ))}
+        </div>
+
+        <button type="button" className="social-profile-cta" onClick={openFeedTab}>
+          INITIATE FEED
+        </button>
       </section>
 
       <button
