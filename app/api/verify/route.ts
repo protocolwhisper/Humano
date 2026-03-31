@@ -29,6 +29,19 @@ interface VerifySuccessResponse {
   verifyResponse: IVerifyResponse;
 }
 
+function formatVerifyFailure(verifyResponse: IVerifyResponse) {
+  const parts = [
+    "World ID rejected the proof.",
+    verifyResponse.code ? `Code: ${verifyResponse.code}.` : null,
+    verifyResponse.detail ?? null,
+    verifyResponse.attribute
+      ? `Attribute: ${verifyResponse.attribute}.`
+      : null,
+  ].filter(Boolean);
+
+  return parts.join(" ");
+}
+
 export async function POST(request: NextRequest) {
   let body: VerifyRequestBody;
 
@@ -73,8 +86,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            "World ID rejected the proof. This usually means the action is already consumed or the action id does not match.",
+          error: formatVerifyFailure(verifyResponse),
+          errorCode: verifyResponse.code ?? null,
+          errorDetail: verifyResponse.detail ?? null,
+          errorAttribute: verifyResponse.attribute ?? null,
           verifyResponse,
         },
         { status: 400 },

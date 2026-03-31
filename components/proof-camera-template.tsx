@@ -362,6 +362,9 @@ export function ProofCameraTemplate() {
         | {
             success: false;
             error?: string;
+            errorCode?: string | null;
+            errorDetail?: string | null;
+            errorAttribute?: string | null;
           }
         | {
             success: true;
@@ -379,7 +382,18 @@ export function ProofCameraTemplate() {
       if (!verificationResponse.ok || !verificationBody.success) {
         const failureMessage =
           verificationBody.success === false
-            ? verificationBody.error
+            ? [
+                verificationBody.error,
+                verificationBody.errorDetail &&
+                verificationBody.errorDetail !== verificationBody.error
+                  ? verificationBody.errorDetail
+                  : null,
+                verificationBody.errorAttribute
+                  ? `Field: ${verificationBody.errorAttribute}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" ")
             : undefined;
 
         setError(
