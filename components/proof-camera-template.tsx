@@ -1390,68 +1390,78 @@ export function ProofCameraTemplate() {
         {activeTab === "explore" ? (
           <div className="app-screen-scroll">
             <section className="profile-panel" id="explore-panel">
-              <div className="panel-head">
-                <div>
-                  <span className="panel-kicker">
-                    {hasCompletedInterests ? "Feed inputs" : "First-time setup"}
-                  </span>
-                  <h2>{hasCompletedInterests ? "Your pulse interests" : "Pick your interests"}</h2>
-                </div>
-                <div className="mini-indicators">
-                  <span className="mini-indicator">
-                    {selectedVibes.length} selected
-                  </span>
-                </div>
-              </div>
+              {!hasCompletedInterests ? (
+                <>
+                  <div className="panel-head">
+                    <div>
+                      <span className="panel-kicker">First-time setup</span>
+                      <h2>Pick your interests</h2>
+                    </div>
+                    <div className="mini-indicators">
+                      <span className="mini-indicator">{selectedVibes.length} selected</span>
+                    </div>
+                  </div>
 
-              <p className="access-lede">
-                {hasCompletedInterests
-                  ? "These interests shape what appears in your feed and how your profile reads."
-                  : "Choose at least 3 interests like travel, foodie, art, or nightlife before you start posting."}
-              </p>
+                  <p className="access-lede">
+                    Choose at least 3 interests like travel, foodie, art, or nightlife before you start posting.
+                  </p>
 
-              <div className="social-vibe-grid">
-                {vibeCards.map((card) => (
-                  <button
-                    key={card.id}
-                    type="button"
-                    className={`social-vibe-card social-vibe-card-${card.tone} ${
-                      selectedVibes.includes(card.id) ? "selected" : ""
-                    }`}
-                    onClick={() => toggleVibe(card.id)}
-                  >
-                    <span className={`social-vibe-icon social-vibe-icon-${card.icon}`} />
-                    <strong>{card.label}</strong>
-                    <span>{card.subtitle}</span>
-                  </button>
-                ))}
-              </div>
+                  <div className="social-vibe-grid">
+                    {vibeCards.map((card) => (
+                      <button
+                        key={card.id}
+                        type="button"
+                        className={`social-vibe-card social-vibe-card-${card.tone} ${
+                          selectedVibes.includes(card.id) ? "selected" : ""
+                        }`}
+                        onClick={() => toggleVibe(card.id)}
+                      >
+                        <span className={`social-vibe-icon social-vibe-icon-${card.icon}`} />
+                        <strong>{card.label}</strong>
+                        <span>{card.subtitle}</span>
+                      </button>
+                    ))}
+                  </div>
 
-              <div className="action-strip">
-                <button
-                  type="button"
-                  className="action-button action-button-primary"
-                  onClick={handleCompleteInterests}
-                >
-                  {hasCompletedInterests ? "UPDATE INTERESTS" : "SAVE INTERESTS"}
-                </button>
-                <button
-                  type="button"
-                  className="action-button"
-                  onClick={openFeedTab}
-                  disabled={!hasCompletedInterests}
-                >
-                  GO TO FEED
-                </button>
-                <button
-                  type="button"
-                  className="action-button"
-                  onClick={openCaptureAction}
-                  disabled={!hasCompletedInterests || isSavingPhoto}
-                >
-                  OPEN CAMERA
-                </button>
-              </div>
+                  <div className="action-strip">
+                    <button
+                      type="button"
+                      className="action-button action-button-primary"
+                      onClick={handleCompleteInterests}
+                    >
+                      Save interests
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="panel-head">
+                    <div>
+                      <span className="panel-kicker">Saved interests</span>
+                      <h2>Your feed inputs</h2>
+                    </div>
+                    <div className="mini-indicators">
+                      <span className="mini-indicator">{selectedInterestCards.length} saved</span>
+                    </div>
+                  </div>
+
+                  <p className="access-lede">
+                    These interests are already saved and are shaping what appears in your feed.
+                  </p>
+
+                  <div className="explore-interest-list">
+                    {selectedInterestCards.map((card) => (
+                      <article key={card.id} className="explore-interest-item">
+                        <span className={`social-vibe-icon social-vibe-icon-${card.icon}`} />
+                        <div>
+                          <strong>{card.label}</strong>
+                          <span>{card.subtitle}</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </>
+              )}
             </section>
           </div>
         ) : null}
@@ -1565,49 +1575,33 @@ export function ProofCameraTemplate() {
                 </div>
               </div>
 
-              <div className="profile-system-strip">
-                <span className="profile-system-dot" />
-                <span>System status: fully verified</span>
-                <span className="profile-system-dot profile-system-dot-right" />
+              <div className="profile-stat-row">
+                <span className="profile-stat-pill">{photos.length} shots</span>
+                <span className="profile-stat-pill">{selectedInterestCards.length} interests</span>
+                <span className="profile-stat-pill">{trackedPhotosCount} proofs</span>
               </div>
 
-              <div className="profile-metrics">
-                <article className="profile-metric-card">
-                  <strong>{photos.length}</strong>
-                  <span>Shots</span>
-                </article>
-                <article className="profile-metric-card">
-                  <strong>{selectedInterestCards.length}</strong>
-                  <span>Interests</span>
-                </article>
-                <article className="profile-metric-card">
-                  <strong>{trackedPhotosCount}</strong>
-                  <span>Proofs</span>
-                </article>
-              </div>
+              {selectedInterestCards.length ? (
+                <div className="profile-interest-row">
+                  {selectedInterestCards.map((card) => (
+                    <span key={card.id} className="profile-interest-chip">
+                      {card.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
 
-              <div className="profile-history-head">
-                <div className="profile-history-title">
-                  <span className="profile-history-bar" />
-                  <h3>Profile</h3>
+              {selectedInterestCards.length ? (
+                <div className="profile-section-head">
+                  <h3>Interests</h3>
                 </div>
-                <div className="profile-history-switch">
-                  <button
-                    type="button"
-                    className="profile-history-switch-button active"
-                    onClick={openExploreTab}
-                  >
-                    Interests
-                  </button>
-                  <button
-                    type="button"
-                    className="profile-history-switch-button"
-                    onClick={openFeedTab}
-                  >
-                    Feed
-                  </button>
+              ) : null}
+
+              {photos.length ? (
+                <div className="profile-section-head">
+                  <h3>Recent shots</h3>
                 </div>
-              </div>
+              ) : null}
 
               {selectedInterestCards.length ? (
                 <div className="social-vibe-grid social-vibe-grid-bottom">
