@@ -64,12 +64,30 @@ video {
 
 .kinetic-shell {
   min-height: 100vh;
+  height: 100vh;
   max-width: 520px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding:
     calc(14px + env(safe-area-inset-top, 0px))
     14px
     calc(118px + env(safe-area-inset-bottom, 0px));
+}
+
+.app-screen-shell {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-screen-scroll {
+  height: 100%;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  padding-bottom: 12px;
 }
 
 .kinetic-topbar,

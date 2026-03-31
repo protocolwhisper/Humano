@@ -311,6 +311,7 @@ export function ProofCameraTemplate() {
   const hasAccess = Boolean(proofSession?.decision.allowCamera);
   const selectedPhoto =
     photos.find((photo) => photo.id === selectedPhotoId) ?? photos[0] ?? null;
+  const recentFeedPhotos = photos.slice(0, 4);
   const vibeCards = [
     {
       id: "cyber-art",
@@ -551,6 +552,7 @@ export function ProofCameraTemplate() {
       };
 
       updateProofSession(verifiedSession);
+      setActiveTab("feed");
       setNotice(
         `${verificationBody.decision.reason}`,
       );
@@ -634,7 +636,6 @@ export function ProofCameraTemplate() {
       await refreshGallery(nextPhoto.id);
       setSelectedPhotoId(nextPhoto.id);
       setActiveTab("feed");
-      scrollToSection("viewer-panel");
       setNotice("Photo saved locally inside the mini app.");
     } catch (photoError) {
       setError(humanizeError(photoError));
@@ -757,37 +758,25 @@ export function ProofCameraTemplate() {
     quickCaptureInputRef.current?.click();
   }
 
-  function scrollToSection(sectionId: string) {
-    document.getElementById(sectionId)?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }
-
   function openFeedTab() {
     setActiveTab("feed");
-    scrollToSection(hasAccess ? "viewer-panel" : "access-panel");
   }
 
   function openCaptureTab() {
     setActiveTab("capture");
-    scrollToSection(hasAccess ? "capture-panel" : "access-panel");
   }
 
   function openChainTab() {
     setActiveTab("chain");
-    scrollToSection("chain-panel");
   }
 
   function openUserTab() {
     setActiveTab("user");
-    scrollToSection("user-panel");
   }
 
   function openPhoto(photoId: string) {
     setSelectedPhotoId(photoId);
     setActiveTab("feed");
-    scrollToSection("viewer-panel");
   }
 
   function toggleVibe(vibeId: string) {
@@ -859,6 +848,7 @@ export function ProofCameraTemplate() {
     stopCamera();
     updateProofSession(null);
     setSelectedProof(VerificationLevel.Device);
+    setActiveTab("feed");
     setNotice("Local proof session reset.");
   }
 
@@ -1022,6 +1012,8 @@ export function ProofCameraTemplate() {
     );
   }
 
+  const unlockedSession = proofSession as ProofSession;
+
   return (
     <div className="kinetic-shell">
       <input
@@ -1109,414 +1101,374 @@ export function ProofCameraTemplate() {
       {notice ? <div className="signal-banner signal-banner-good">{notice}</div> : null}
       {error ? <div className="signal-banner signal-banner-bad">{error}</div> : null}
 
-      {!hasAccess ? (
-        <section className="access-panel" id="access-panel">
-          <div className="panel-head">
-            <div>
-              <span className="panel-kicker">Humano access</span>
-              <h2>Log in with World</h2>
-            </div>
-            <div className="mini-indicators">
-              <span className="mini-indicator">{activeProofConfig.label}</span>
-            </div>
-          </div>
+      <div className="app-screen-shell">
+        {activeTab === "feed" ? (
+          <div className="app-screen-scroll">
+            <section className="hero-stage">
+              <div className="hero-pill">VERIFIED HUMANS ONLY</div>
+              <div className="hero-copy">
+                <h1>
+                  THE <em>PULSE</em>
+                </h1>
+                <p>
+                  Real people. Real moments. Photos unlock through World verification,
+                  sync to Filecoin, and can be tracked onchain by Humano Protocol.
+                </p>
+              </div>
 
-          <p className="access-lede">
-            Verify once to enter the feed, unlock the camera, and keep each new
-            shot tied to a real verified session.
-          </p>
+              <div className="hero-stats">
+                <article className="hero-stat">
+                  <strong>{proofLabel(unlockedSession.verificationLevel)}</strong>
+                  <span>Unlocked {formatDate(unlockedSession.verifiedAt)}</span>
+                </article>
+                <article className="hero-stat">
+                  <strong>{photos.length}</strong>
+                  <span>Captured</span>
+                </article>
+                <article className="hero-stat">
+                  <strong>{trackedPhotosCount}</strong>
+                  <span>Tracked onchain</span>
+                </article>
+              </div>
+            </section>
 
-          <div className="proof-mode-grid">
-            <button
-              type="button"
-              className={`mode-card ${
-                selectedProof === VerificationLevel.Device ? "active" : ""
-              }`}
-              onClick={() => setSelectedProof(VerificationLevel.Device)}
-            >
-              <span className="mode-label">Device proof</span>
-              <strong>Fast unlock</strong>
-              <p>Lower-friction access to enter the app and start capturing.</p>
-            </button>
-            <button
-              type="button"
-              className={`mode-card ${
-                selectedProof === VerificationLevel.Orb ? "active" : ""
-              }`}
-              onClick={() => setSelectedProof(VerificationLevel.Orb)}
-            >
-              <span className="mode-label">Orb proof</span>
-              <strong>Humanity first</strong>
-              <p>Stronger personhood for stricter anti-bot and anti-Sybil use.</p>
-            </button>
-          </div>
-
-          <div className="access-steps">
-            <div className="access-step">
-              <span className="signal-tag">1</span>
-              <p>Verify access with World ID.</p>
-            </div>
-            <div className="access-step">
-              <span className="signal-tag">2</span>
-              <p>Camera controls unlock for this session.</p>
-            </div>
-            <div className="access-step">
-              <span className="signal-tag">3</span>
-              <p>After each shot, Humano jumps you straight to the image.</p>
-            </div>
-          </div>
-
-          <div className="action-strip">
-            <button
-              type="button"
-              className="action-button action-button-primary"
-              onClick={() => void handleVerify()}
-              disabled={isVerifying}
-            >
-              {isVerifying ? "VERIFYING..." : "LOG IN + VERIFY"}
-            </button>
-          </div>
-        </section>
-      ) : null}
-
-      {hasAccess ? (
-        <section className="protocol-panel" id="capture-panel">
-        <div className="panel-head">
-          <div>
-            <span className="panel-kicker">Kinetic protocol</span>
-            <h2>Capture a verified moment</h2>
-          </div>
-          <div className="mini-indicators">
-            <span className="mini-indicator">{activeProofConfig.label}</span>
-            <span className="mini-indicator mono-pill">{activeProofConfig.action}</span>
-          </div>
-        </div>
-
-        <div className="action-strip">
-          <button
-            type="button"
-            className="action-button"
-            onClick={() => void startCamera()}
-            disabled={!proofSession || cameraReady}
-          >
-            START LIVE CAM
-          </button>
-          <button
-            type="button"
-            className="action-button"
-            onClick={stopCamera}
-            disabled={!cameraReady}
-          >
-            STOP CAM
-          </button>
-          <button
-            type="button"
-            className="action-button"
-            onClick={handleResetProof}
-            disabled={!proofSession}
-          >
-            RESET
-          </button>
-        </div>
-
-        <div className="protocol-grid">
-          <div className="camera-panel-dark">
-            <div className="panel-kicker">Live capture stage</div>
-            <div className="camera-shell camera-shell-kinetic">
-              <div className="camera-stage">
-                {cameraReady ? (
-                  <video
-                    ref={videoRef}
-                    className="camera-video"
-                    autoPlay
-                    playsInline
-                    muted
-                  />
-                ) : (
-                  <div className="camera-placeholder kinetic-placeholder">
-                    <strong>Session-locked camera stage</strong>
-                    <span>
-                      Verify first, then use live preview or quick capture to
-                      populate the feed.
+            {selectedPhoto ? (
+              <section className="viewer-panel" id="viewer-panel">
+                <div className="panel-head">
+                  <div>
+                    <span className="panel-kicker">Latest shot</span>
+                    <h2>Review the capture</h2>
+                  </div>
+                  <div className="mini-indicators">
+                    <span className="mini-indicator">
+                      {proofLabel(selectedPhoto.verificationLevel)}
                     </span>
                   </div>
-                )}
+                </div>
+
+                <div className="viewer-stage">
+                  <div className="viewer-media">
+                    <Image
+                      src={selectedPhoto.previewUrl}
+                      alt={`Captured ${formatDate(selectedPhoto.createdAt)}`}
+                      width={1400}
+                      height={1800}
+                      sizes="100vw"
+                      unoptimized
+                    />
+                  </div>
+
+                  <div className="viewer-body">
+                    <span className="feed-handle">
+                      @{formatCompactHash(selectedPhoto.id).replaceAll(".", "")}
+                    </span>
+                    <span className="feed-caption">{formatDate(selectedPhoto.createdAt)}</span>
+
+                    <div className="status-row">
+                      <span className="pill pill-success">LOCAL</span>
+                      <span
+                        className={`pill ${
+                          selectedPhoto.filecoin ? "pill-success" : "pill-muted"
+                        }`}
+                      >
+                        {selectedPhoto.filecoin ? "FILECOIN" : "PENDING"}
+                      </span>
+                      <span
+                        className={`pill ${
+                          selectedPhoto.humanoProtocol ? "pill-success" : "pill-muted"
+                        }`}
+                      >
+                        {selectedPhoto.humanoProtocol ? "HUMANO" : "OFFCHAIN"}
+                      </span>
+                    </div>
+
+                    {selectedPhoto.filecoin ? (
+                      <div className="feed-data">
+                        <span className="mono-pill">
+                          piece_cid: {formatCompactHash(selectedPhoto.filecoin.pieceCid)}
+                        </span>
+                        {selectedPhoto.humanoProtocol ? (
+                          <span className="mono-pill">
+                            humano_id: #{selectedPhoto.humanoProtocol.uploadId}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    <div className="feed-actions">
+                      <button
+                        type="button"
+                        className="action-button action-button-primary"
+                        onClick={() => void handleUploadToFilecoin(selectedPhoto)}
+                        disabled={
+                          uploadingPhotoId === selectedPhoto.id ||
+                          selectedPhoto.filecoin?.status === "uploaded"
+                        }
+                      >
+                        {selectedPhoto.filecoin?.status === "uploaded"
+                          ? "SYNCED"
+                          : uploadingPhotoId === selectedPhoto.id
+                            ? "SYNCING"
+                            : "SYNC TO FILECOIN"}
+                      </button>
+                      <button
+                        type="button"
+                        className="action-button"
+                        onClick={() => void handleRecordOnHumano(selectedPhoto)}
+                        disabled={
+                          !selectedPhoto.filecoin ||
+                          Boolean(selectedPhoto.humanoProtocol) ||
+                          trackingPhotoId === selectedPhoto.id
+                        }
+                      >
+                        {selectedPhoto.humanoProtocol
+                          ? "TRACKED"
+                          : trackingPhotoId === selectedPhoto.id
+                            ? "TRACKING"
+                            : "TRACK ON HUMANO"}
+                      </button>
+                      <button
+                        type="button"
+                        className="action-button"
+                        onClick={() => void handleDeletePhoto(selectedPhoto.id)}
+                      >
+                        DROP SHOT
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            <section className="feed-panel-dark" id="feed-panel">
+              <div className="panel-head">
+                <div>
+                  <span className="panel-kicker">Verified feed</span>
+                  <h2>Captured pulse</h2>
+                </div>
+                <div className="action-strip action-strip-tight">
+                  <button
+                    type="button"
+                    className="action-button"
+                    onClick={() => void refreshGallery()}
+                  >
+                    REFRESH
+                  </button>
+                  <button
+                    type="button"
+                    className="action-button"
+                    onClick={() => void handleClearLibrary()}
+                    disabled={!photos.length}
+                  >
+                    CLEAR
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="action-strip action-strip-tight">
-              <button
-                type="button"
-                className="action-button action-button-primary"
-                onClick={() => void handleCaptureFrame()}
-                disabled={!cameraReady || isSavingPhoto}
-              >
-                {isSavingPhoto ? "SAVING..." : "CAPTURE FRAME"}
-              </button>
-              <button
-                type="button"
-                className="action-button"
-                onClick={openQuickCapture}
-                disabled={!proofSession || isSavingPhoto}
-              >
-                QUICK CAPTURE
-              </button>
-            </div>
-            {cameraError ? <p className="micro-copy">{cameraError}</p> : null}
+
+              {isGalleryLoading ? (
+                <div className="empty-feed">Loading the verified feed...</div>
+              ) : recentFeedPhotos.length ? (
+                <div className="feed-grid">
+                  {recentFeedPhotos.map((photo) => (
+                    <button
+                      key={photo.id}
+                      type="button"
+                      className={`feed-card ${selectedPhoto?.id === photo.id ? "selected" : ""}`}
+                      onClick={() => openPhoto(photo.id)}
+                    >
+                      <div className="feed-card-media">
+                        <Image
+                          src={photo.previewUrl}
+                          alt={`Captured ${formatDate(photo.createdAt)}`}
+                          width={1200}
+                          height={1400}
+                          sizes="(max-width: 520px) 100vw, 50vw"
+                          unoptimized
+                        />
+                      </div>
+                      <div className="feed-card-body">
+                        <span className="feed-handle">
+                          @{formatCompactHash(photo.id).replaceAll(".", "")}
+                        </span>
+                        <span className="feed-metadata">
+                          {proofLabel(photo.verificationLevel)}
+                        </span>
+                        <span className="feed-caption">{formatDate(photo.createdAt)}</span>
+                        <span className="feed-caption">Tap to open shot</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-feed">
+                  <strong>No pulse yet.</strong>
+                  <span>
+                    Verify the session, shoot a photo, then sync it through Filecoin
+                    and Humano to light up this feed.
+                  </span>
+                </div>
+              )}
+            </section>
           </div>
+        ) : null}
 
-          <div className="camera-panel-dark">
-            <div className="panel-kicker" id="chain-panel">Signal chain</div>
-            <div className="status-stack">
-              <div className="signal-row">
-                <span className="signal-tag">WORLD</span>
-                <p>
-                  One proof unlocks the session. After that, the same verified
-                  user can capture multiple photos.
-                </p>
+        {activeTab === "capture" ? (
+          <div className="app-screen-scroll">
+            <section className="protocol-panel" id="capture-panel">
+              <div className="panel-head">
+                <div>
+                  <span className="panel-kicker">Kinetic protocol</span>
+                  <h2>Capture a verified moment</h2>
+                </div>
+                <div className="mini-indicators">
+                  <span className="mini-indicator">{activeProofConfig.label}</span>
+                  <span className="mini-indicator mono-pill">{activeProofConfig.action}</span>
+                </div>
               </div>
-              <div className="signal-row">
-                <span className="signal-tag">FILECOIN</span>
-                <p>
-                  Image bytes can be synced to Filecoin Calibration and returned
-                  with a real PieceCID.
-                </p>
-              </div>
-              <div className="signal-row">
-                <span className="signal-tag">HUMANO</span>
-                <p>
-                  Each Filecoin-backed upload can be recorded onchain under the
-                  humano_protocol contract.
-                </p>
-              </div>
-            </div>
 
-            {proofSession ? (
+              <div className="action-strip">
+                <button
+                  type="button"
+                  className="action-button"
+                  onClick={() => void startCamera()}
+                  disabled={!proofSession || cameraReady}
+                >
+                  START LIVE CAM
+                </button>
+                <button
+                  type="button"
+                  className="action-button"
+                  onClick={stopCamera}
+                  disabled={!cameraReady}
+                >
+                  STOP CAM
+                </button>
+                <button
+                  type="button"
+                  className="action-button"
+                  onClick={handleResetProof}
+                  disabled={!proofSession}
+                >
+                  RESET
+                </button>
+              </div>
+
+              <div className="camera-panel-dark">
+                <div className="panel-kicker">Live capture stage</div>
+                <div className="camera-shell camera-shell-kinetic">
+                  <div className="camera-stage">
+                    {cameraReady ? (
+                      <video
+                        ref={videoRef}
+                        className="camera-video"
+                        autoPlay
+                        playsInline
+                        muted
+                      />
+                    ) : (
+                      <div className="camera-placeholder kinetic-placeholder">
+                        <strong>Session-locked camera stage</strong>
+                        <span>
+                          Use the buttons below to start the camera and capture a new
+                          verified moment.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="action-strip action-strip-tight">
+                  <button
+                    type="button"
+                    className="action-button action-button-primary"
+                    onClick={() => void handleCaptureFrame()}
+                    disabled={!cameraReady || isSavingPhoto}
+                  >
+                    {isSavingPhoto ? "SAVING..." : "CAPTURE FRAME"}
+                  </button>
+                  <button
+                    type="button"
+                    className="action-button"
+                    onClick={openQuickCapture}
+                    disabled={!proofSession || isSavingPhoto}
+                  >
+                    QUICK CAPTURE
+                  </button>
+                </div>
+                {cameraError ? <p className="micro-copy">{cameraError}</p> : null}
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {activeTab === "chain" ? (
+          <div className="app-screen-scroll">
+            <section className="protocol-panel" id="chain-panel">
+              <div className="panel-head">
+                <div>
+                  <span className="panel-kicker">Signal chain</span>
+                  <h2>Verification stack</h2>
+                </div>
+                <div className="mini-indicators">
+                  <span className="mini-indicator">
+                    {trackedPhotosCount} tracked
+                  </span>
+                </div>
+              </div>
+
+              <div className="status-stack">
+                <div className="signal-row">
+                  <span className="signal-tag">WORLD</span>
+                  <p>
+                    One proof unlocks the session. After that, the same verified
+                    user can capture multiple photos.
+                  </p>
+                </div>
+                <div className="signal-row">
+                  <span className="signal-tag">FILECOIN</span>
+                  <p>
+                    {filecoinPhotosCount
+                      ? `${filecoinPhotosCount} captured moment${
+                          filecoinPhotosCount === 1 ? "" : "s"
+                        } are already synced to Filecoin Calibration.`
+                      : "No captured moments have been pushed to Filecoin yet."}
+                  </p>
+                </div>
+                <div className="signal-row">
+                  <span className="signal-tag">HUMANO</span>
+                  <p>
+                    {trackedPhotosCount
+                      ? `${trackedPhotosCount} capture${
+                          trackedPhotosCount === 1 ? "" : "s"
+                        } are recorded on Humano Protocol.`
+                      : "No capture has been recorded on Humano Protocol yet."}
+                  </p>
+                </div>
+              </div>
+
               <div className="hash-block">
-                <span className="mini-indicator">
-                  {proofSession.decision.allowCamera
-                    ? "CAMERA SESSION UNLOCKED"
-                    : "CAMERA BLOCKED"}
-                </span>
-                <p className="micro-copy">{proofSession.decision.reason}</p>
+                <span className="mini-indicator">CAMERA SESSION UNLOCKED</span>
+                <p className="micro-copy">{unlockedSession.decision.reason}</p>
                 <span className="mono-pill">
-                  uploader_key: {formatCompactHash(proofSession.uploaderKey)}
+                  uploader_key: {formatCompactHash(unlockedSession.uploaderKey)}
                 </span>
-                {proofSession.nullifierHash ? (
+                {unlockedSession.nullifierHash ? (
                   <span className="mono-pill">
-                    nullifier: {formatCompactHash(proofSession.nullifierHash)}
+                    nullifier: {formatCompactHash(unlockedSession.nullifierHash)}
                   </span>
                 ) : null}
-              </div>
-            ) : (
-              <div className="hash-block">
-                <span className="mini-indicator">WAITING FOR VERIFICATION</span>
-                <p className="micro-copy">
-                  {isDevBypassEnabled()
-                    ? "Browser preview can still unlock with dev bypass while you wire real World credentials."
-                    : "Open inside World App to unlock the session for real."}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-        </section>
-      ) : null}
-
-      {hasAccess && selectedPhoto ? (
-        <section className="viewer-panel" id="viewer-panel">
-          <div className="panel-head">
-            <div>
-              <span className="panel-kicker">Latest shot</span>
-              <h2>Review the capture</h2>
-            </div>
-            <div className="mini-indicators">
-              <span className="mini-indicator">{proofLabel(selectedPhoto.verificationLevel)}</span>
-            </div>
-          </div>
-
-          <div className="viewer-stage">
-            <div className="viewer-media">
-              <Image
-                src={selectedPhoto.previewUrl}
-                alt={`Captured ${formatDate(selectedPhoto.createdAt)}`}
-                width={1400}
-                height={1800}
-                sizes="100vw"
-                unoptimized
-              />
-            </div>
-
-            <div className="viewer-body">
-              <span className="feed-handle">
-                @{formatCompactHash(selectedPhoto.id).replaceAll(".", "")}
-              </span>
-              <span className="feed-caption">{formatDate(selectedPhoto.createdAt)}</span>
-
-              <div className="status-row">
-                <span className="pill pill-success">LOCAL</span>
-                <span
-                  className={`pill ${
-                    selectedPhoto.filecoin ? "pill-success" : "pill-muted"
-                  }`}
-                >
-                  {selectedPhoto.filecoin ? "FILECOIN" : "PENDING"}
-                </span>
-                <span
-                  className={`pill ${
-                    selectedPhoto.humanoProtocol ? "pill-success" : "pill-muted"
-                  }`}
-                >
-                  {selectedPhoto.humanoProtocol ? "HUMANO" : "OFFCHAIN"}
-                </span>
-              </div>
-
-              {selectedPhoto.filecoin ? (
-                <div className="feed-data">
+                {selectedPhoto?.filecoin ? (
                   <span className="mono-pill">
                     piece_cid: {formatCompactHash(selectedPhoto.filecoin.pieceCid)}
                   </span>
-                  {selectedPhoto.humanoProtocol ? (
-                    <span className="mono-pill">
-                      humano_id: #{selectedPhoto.humanoProtocol.uploadId}
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
-
-              <div className="feed-actions">
-                <button
-                  type="button"
-                  className="action-button action-button-primary"
-                  onClick={() => void handleUploadToFilecoin(selectedPhoto)}
-                  disabled={
-                    uploadingPhotoId === selectedPhoto.id ||
-                    selectedPhoto.filecoin?.status === "uploaded"
-                  }
-                >
-                  {selectedPhoto.filecoin?.status === "uploaded"
-                    ? "SYNCED"
-                    : uploadingPhotoId === selectedPhoto.id
-                      ? "SYNCING"
-                      : "SYNC TO FILECOIN"}
-                </button>
-                <button
-                  type="button"
-                  className="action-button"
-                  onClick={() => void handleRecordOnHumano(selectedPhoto)}
-                  disabled={
-                    !selectedPhoto.filecoin ||
-                    Boolean(selectedPhoto.humanoProtocol) ||
-                    trackingPhotoId === selectedPhoto.id
-                  }
-                >
-                  {selectedPhoto.humanoProtocol
-                    ? "TRACKED"
-                    : trackingPhotoId === selectedPhoto.id
-                      ? "TRACKING"
-                      : "TRACK ON HUMANO"}
-                </button>
-                <button
-                  type="button"
-                  className="action-button"
-                  onClick={() => void handleDeletePhoto(selectedPhoto.id)}
-                >
-                  DROP SHOT
-                </button>
+                ) : null}
               </div>
-            </div>
+            </section>
           </div>
-        </section>
-      ) : null}
+        ) : null}
 
-      <section className="feed-panel-dark" id="feed-panel">
-        <div className="panel-head">
-          <div>
-            <span className="panel-kicker">Verified feed</span>
-            <h2>Captured pulse</h2>
-          </div>
-          <div className="action-strip action-strip-tight">
-            <button
-              type="button"
-              className="action-button"
-              onClick={() => void refreshGallery()}
-            >
-              REFRESH
-            </button>
-            <button
-              type="button"
-              className="action-button"
-              onClick={() => void handleClearLibrary()}
-              disabled={!photos.length}
-            >
-              CLEAR
-            </button>
-          </div>
-        </div>
-
-        {isGalleryLoading ? (
-          <div className="empty-feed">Loading the verified feed...</div>
-        ) : photos.length ? (
-          <div className="feed-grid">
-            {photos.map((photo) => (
-              <button
-                key={photo.id}
-                type="button"
-                className={`feed-card ${selectedPhoto?.id === photo.id ? "selected" : ""}`}
-                onClick={() => openPhoto(photo.id)}
-              >
-                <div className="feed-card-media">
-                  <Image
-                    src={photo.previewUrl}
-                    alt={`Captured ${formatDate(photo.createdAt)}`}
-                    width={1200}
-                    height={1400}
-                    sizes="(max-width: 520px) 100vw, 50vw"
-                    unoptimized
-                  />
-                </div>
-                <div className="feed-card-body">
-                  <span className="feed-handle">
-                    @{formatCompactHash(photo.id).replaceAll(".", "")}
-                  </span>
-                  <span className="feed-metadata">
-                    {proofLabel(photo.verificationLevel)}
-                  </span>
-                  <span className="feed-caption">{formatDate(photo.createdAt)}</span>
-
-                  <div className="status-row">
-                    <span className="pill pill-success">LOCAL</span>
-                    <span
-                      className={`pill ${
-                        photo.filecoin ? "pill-success" : "pill-muted"
-                      }`}
-                    >
-                      {photo.filecoin ? "FILECOIN" : "PENDING"}
-                    </span>
-                    <span
-                      className={`pill ${
-                        photo.humanoProtocol ? "pill-success" : "pill-muted"
-                      }`}
-                    >
-                      {photo.humanoProtocol ? "HUMANO" : "OFFCHAIN"}
-                    </span>
-                  </div>
-                  <span className="feed-caption">Tap to open shot</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="empty-feed">
-            <strong>No pulse yet.</strong>
-            <span>
-              Verify the session, shoot a photo, then sync it through Filecoin
-              and Humano to light up this feed.
-            </span>
-          </div>
-        )}
-      </section>
-
-      <section className="profile-panel" id="user-panel">
+        {activeTab === "user" ? (
+          <div className="app-screen-scroll">
+            <section className="profile-panel" id="user-panel">
         <div className="social-topbar">
           <button
             type="button"
@@ -1623,20 +1575,10 @@ export function ProofCameraTemplate() {
         <button type="button" className="social-profile-cta" onClick={openFeedTab}>
           INITIATE FEED
         </button>
-      </section>
-
-      <button
-        type="button"
-        className="camera-fab"
-        onClick={() => {
-          setActiveTab("capture");
-          openQuickCapture();
-        }}
-        disabled={!proofSession || isSavingPhoto}
-        aria-label="Quick capture"
-      >
-        <span className="camera-fab-core" />
-      </button>
+            </section>
+          </div>
+        ) : null}
+      </div>
 
       <nav className="bottom-nav">
         <button
