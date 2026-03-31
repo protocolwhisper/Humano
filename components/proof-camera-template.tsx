@@ -236,6 +236,7 @@ export function ProofCameraTemplate() {
   const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null);
   const [trackingPhotoId, setTrackingPhotoId] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
+  const [activeTab, setActiveTab] = useState<"feed" | "capture" | "chain" | "user">("feed");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -609,6 +610,33 @@ export function ProofCameraTemplate() {
     quickCaptureInputRef.current?.click();
   }
 
+  function scrollToSection(sectionId: string) {
+    document.getElementById(sectionId)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
+
+  function openFeedTab() {
+    setActiveTab("feed");
+    scrollToSection("feed-panel");
+  }
+
+  function openCaptureTab() {
+    setActiveTab("capture");
+    scrollToSection("capture-panel");
+  }
+
+  function openChainTab() {
+    setActiveTab("chain");
+    scrollToSection("capture-panel");
+  }
+
+  function openUserTab() {
+    setActiveTab("user");
+    scrollToSection("hero-stage");
+  }
+
   async function handleRecordOnHumano(photo: StoredPhoto) {
     resetMessages();
 
@@ -750,8 +778,13 @@ export function ProofCameraTemplate() {
         onChange={(event) => void handleQuickCapture(event)}
       />
 
-      <header className="kinetic-topbar">
-        <button type="button" className="icon-button" aria-label="Menu">
+      <header className="kinetic-topbar" id="hero-stage">
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Open feed"
+          onClick={openFeedTab}
+        >
           <span />
           <span />
           <span />
@@ -762,7 +795,12 @@ export function ProofCameraTemplate() {
           <span className="brand-sub">protocol</span>
         </div>
 
-        <button type="button" className="icon-button" aria-label="Search">
+        <button
+          type="button"
+          className="icon-button"
+          aria-label="Open capture"
+          onClick={openCaptureTab}
+        >
           <span className="icon-ring" />
         </button>
       </header>
@@ -815,7 +853,7 @@ export function ProofCameraTemplate() {
       {notice ? <div className="signal-banner signal-banner-good">{notice}</div> : null}
       {error ? <div className="signal-banner signal-banner-bad">{error}</div> : null}
 
-      <section className="protocol-panel">
+      <section className="protocol-panel" id="capture-panel">
         <div className="panel-head">
           <div>
             <span className="panel-kicker">Kinetic protocol</span>
@@ -989,7 +1027,7 @@ export function ProofCameraTemplate() {
         </div>
       </section>
 
-      <section className="feed-panel-dark">
+      <section className="feed-panel-dark" id="feed-panel">
         <div className="panel-head">
           <div>
             <span className="panel-kicker">Verified feed</span>
@@ -1128,7 +1166,10 @@ export function ProofCameraTemplate() {
       <button
         type="button"
         className="camera-fab"
-        onClick={openQuickCapture}
+        onClick={() => {
+          setActiveTab("capture");
+          openQuickCapture();
+        }}
         disabled={!proofSession || isSavingPhoto}
         aria-label="Quick capture"
       >
@@ -1136,11 +1177,41 @@ export function ProofCameraTemplate() {
       </button>
 
       <nav className="bottom-nav">
-        <span className="bottom-nav-item active">FEED</span>
-        <span className="bottom-nav-item">EXPLORE</span>
-        <span className="bottom-nav-item emphasis">CAPTURE</span>
-        <span className="bottom-nav-item">CHAIN</span>
-        <span className="bottom-nav-item">USER</span>
+        <button
+          type="button"
+          className={`bottom-nav-item ${activeTab === "feed" ? "active" : ""}`}
+          onClick={openFeedTab}
+        >
+          FEED
+        </button>
+        <button
+          type="button"
+          className="bottom-nav-item"
+          onClick={openFeedTab}
+        >
+          EXPLORE
+        </button>
+        <button
+          type="button"
+          className={`bottom-nav-item ${activeTab === "capture" ? "emphasis" : ""}`}
+          onClick={openCaptureTab}
+        >
+          CAPTURE
+        </button>
+        <button
+          type="button"
+          className={`bottom-nav-item ${activeTab === "chain" ? "active" : ""}`}
+          onClick={openChainTab}
+        >
+          CHAIN
+        </button>
+        <button
+          type="button"
+          className={`bottom-nav-item ${activeTab === "user" ? "active" : ""}`}
+          onClick={openUserTab}
+        >
+          USER
+        </button>
       </nav>
     </div>
   );
