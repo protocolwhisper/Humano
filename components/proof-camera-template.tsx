@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { keccak256, stringToHex } from "viem";
 import {
   type ChangeEvent,
   type MutableRefObject,
@@ -25,8 +26,10 @@ import {
 } from "@/lib/photo-store";
 import {
   humanizeFilecoinError,
+  type HumanoProtocolRecordResponse,
   type FilecoinUploadResponse,
 } from "@/lib/filecoin";
+import type { HumanoProtocolRecord } from "@/lib/humano-protocol";
 import {
   getProofConfig,
   isDevBypassEnabled,
@@ -49,6 +52,7 @@ interface ProofSession {
   signal?: string;
   nullifierHash?: string | null;
   merkleRoot?: string | null;
+  uploaderKey: string;
   decision: ProofDecision;
 }
 
@@ -68,8 +72,22 @@ function createDefaultDecision(
     reason:
       source === "dev-bypass"
         ? `${proofLabel(verificationLevel)} unlocked with local development bypass.`
-        : `${proofLabel(verificationLevel)} verified and allowed for this action.`,
+        : `${proofLabel(verificationLevel)} verified and unlocked for this camera session.`,
   };
+}
+
+function deriveUploaderKey(input: {
+  source: ProofSource;
+  action: string;
+  verifiedAt: string;
+  nullifierHash?: string | null;
+}) {
+  const seed =
+    input.source === "world-id" && input.nullifierHash
+      ? `world:${input.nullifierHash}`
+      : `dev:${input.action}:${input.verifiedAt}`;
+
+  return keccak256(stringToHex(seed));
 }
 
 function formatDate(value: string) {
@@ -123,6 +141,14 @@ function loadStoredProofSession() {
       signal: parsed.signal,
       nullifierHash: parsed.nullifierHash ?? null,
       merkleRoot: parsed.merkleRoot ?? null,
+      uploaderKey:
+        parsed.uploaderKey ??
+        deriveUploaderKey({
+          source: parsed.source,
+          action: parsed.action,
+          verifiedAt: parsed.verifiedAt,
+          nullifierHash: parsed.nullifierHash ?? null,
+        }),
       decision:
         parsed.decision ??
         createDefaultDecision(verificationLevel, parsed.source),
@@ -210,6 +236,7 @@ export function ProofCameraTemplate() {
   const [isSavingPhoto, setIsSavingPhoto] = useState(false);
   const [isGalleryLoading, setIsGalleryLoading] = useState(true);
   const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null);
+  const [trackingPhotoId, setTrackingPhotoId] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -253,25 +280,43 @@ export function ProofCameraTemplate() {
     return `${value.slice(0, 10)}...${value.slice(-8)}`;
   }
 
+  function formatStorageLabel(photo: StoredPhoto) {
+    if (photo.humanoProtocol) {
+      return "Local + Filecoin + Humano";
+    }
+
+    if (photo.filecoin) {
+      return "Local + Filecoin";
+    }
+
+    return "Local only";
+  }
+
   function updateProofSession(session: ProofSession | null) {
     setProofSession(session);
     persistProofSession(session);
   }
 
   async function unlockWithDevBypass() {
+    const verifiedAt = new Date().toISOString();
     const bypassSession: ProofSession = {
       action: activeProofConfig.action,
       verificationLevel: selectedProof,
-      verifiedAt: new Date().toISOString(),
+      verifiedAt,
       source: "dev-bypass",
       nullifierHash: null,
       merkleRoot: null,
+      uploaderKey: deriveUploaderKey({
+        source: "dev-bypass",
+        action: activeProofConfig.action,
+        verifiedAt,
+      }),
       decision: createDefaultDecision(selectedProof, "dev-bypass"),
     };
 
     updateProofSession(bypassSession);
     setNotice(
-      `${proofLabel(selectedProof)} unlocked with local dev bypass. Replace this with real World ID credentials before shipping.`,
+      `${proofLabel(selectedProof)} unlocked with local dev bypass. This starts a temporary camera session for testing only.`,
     );
   }
 
@@ -352,14 +397,21 @@ export function ProofCameraTemplate() {
         return;
       }
 
+      const verifiedAt = verificationBody.verifiedAt ?? new Date().toISOString();
       const verifiedSession: ProofSession = {
         action: verificationBody.proof.action,
         verificationLevel: verificationBody.proof.verificationLevel,
-        verifiedAt: verificationBody.verifiedAt ?? new Date().toISOString(),
+        verifiedAt,
         source: "world-id",
         signal: verificationBody.proof.signal,
         nullifierHash: verificationBody.proof.nullifierHash,
         merkleRoot: verificationBody.proof.merkleRoot,
+        uploaderKey: deriveUploaderKey({
+          source: "world-id",
+          action: verificationBody.proof.action,
+          verifiedAt,
+          nullifierHash: verificationBody.proof.nullifierHash,
+        }),
         decision: verificationBody.decision,
       };
 
@@ -439,6 +491,7 @@ export function ProofCameraTemplate() {
         mimeType: blob.type || "image/jpeg",
         verificationLevel: proofSession.verificationLevel,
         worldAction: proofSession.action,
+        uploaderKey: proofSession.uploaderKey,
         blob,
       };
 
@@ -508,6 +561,7 @@ export function ProofCameraTemplate() {
       formData.append("createdAt", photo.createdAt);
       formData.append("verificationLevel", photo.verificationLevel);
       formData.append("worldAction", photo.worldAction ?? "unknown-action");
+      formData.append("uploaderKey", photo.uploaderKey ?? proofSession?.uploaderKey ?? "");
 
       const response = await fetch("/api/filecoin/upload", {
         method: "POST",
@@ -529,12 +583,18 @@ export function ProofCameraTemplate() {
       const updatedPhoto: StoredPhoto = {
         ...photo,
         filecoin: responseBody.filecoin as FilecoinPhotoRecord,
+        humanoProtocol:
+          responseBody.humanoProtocol as HumanoProtocolRecord | undefined,
       };
 
       await savePhoto(updatedPhoto);
       await refreshGallery();
       setNotice(
-        `Photo uploaded to Filecoin Calibration. PieceCID: ${responseBody.filecoin.pieceCid}`,
+        responseBody.humanoProtocol
+          ? `Photo uploaded to Filecoin and recorded on Humano Protocol. PieceCID: ${responseBody.filecoin.pieceCid}`
+          : responseBody.humanoProtocolError
+            ? `Photo uploaded to Filecoin, but Humano Protocol tracking failed: ${responseBody.humanoProtocolError}`
+            : `Photo uploaded to Filecoin Calibration. PieceCID: ${responseBody.filecoin.pieceCid}`,
       );
     } catch (uploadError) {
       setError(humanizeError(uploadError));
@@ -552,6 +612,62 @@ export function ProofCameraTemplate() {
       setNotice("Local photo library cleared.");
     } catch (clearError) {
       setError(humanizeError(clearError));
+    }
+  }
+
+  async function handleRecordOnHumano(photo: StoredPhoto) {
+    resetMessages();
+
+    if (!photo.filecoin) {
+      setError("Upload the photo to Filecoin before recording it on Humano.");
+      return;
+    }
+
+    setTrackingPhotoId(photo.id);
+
+    try {
+      const response = await fetch("/api/humano/record", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uploaderKey: photo.uploaderKey,
+          pieceCid: photo.filecoin.pieceCid,
+          worldAction: photo.worldAction ?? "unknown-action",
+          verificationLevel: photo.verificationLevel,
+          createdAt: photo.createdAt,
+          size: photo.filecoin.size,
+          retrievalUrl: photo.filecoin.retrievalUrl,
+        }),
+      });
+
+      const responseBody = (await response.json()) as HumanoProtocolRecordResponse;
+
+      if (!response.ok || !responseBody.success) {
+        const message =
+          responseBody.success === false
+            ? humanizeFilecoinError(responseBody.error)
+            : "Humano Protocol tracking failed.";
+
+        setError(message);
+        return;
+      }
+
+      const updatedPhoto: StoredPhoto = {
+        ...photo,
+        humanoProtocol: responseBody.humanoProtocol,
+      };
+
+      await savePhoto(updatedPhoto);
+      await refreshGallery();
+      setNotice(
+        `Photo recorded on Humano Protocol. Upload #${responseBody.humanoProtocol.uploadId}`,
+      );
+    } catch (recordError) {
+      setError(humanizeError(recordError));
+    } finally {
+      setTrackingPhotoId(null);
     }
   }
 
@@ -665,13 +781,20 @@ export function ProofCameraTemplate() {
             <span>
               {proofSession
                 ? `Unlocked ${formatDate(proofSession.verifiedAt)}`
-                : "Verify to unlock camera access"}
+                : "Verify to unlock a camera session"}
             </span>
           </div>
 
           <div className="stat-chip">
             <strong>{photos.length}</strong>
             <span>{photos.length === 1 ? "Saved photo" : "Saved photos"}</span>
+          </div>
+
+          <div className="stat-chip">
+            <strong>
+              {photos.filter((photo) => photo.humanoProtocol).length}
+            </strong>
+            <span>Tracked on Humano</span>
           </div>
         </div>
       </section>
@@ -697,7 +820,7 @@ export function ProofCameraTemplate() {
             onClick={() => setSelectedProof(VerificationLevel.Device)}
           >
             <strong>Device proof</strong>
-            <span>Default flow. Best for faster camera access in the mini app.</span>
+            <span>Default flow. Best for unlocking a low-friction camera session.</span>
           </button>
 
           <button
@@ -725,7 +848,8 @@ export function ProofCameraTemplate() {
         <p className="helper">
           <strong>Flow note:</strong> World App returns a proof payload, the
           server verifies it, and the verified result becomes the app decision
-          to allow camera access.
+          to unlock a camera session. After that, the user can take multiple
+          photos in that session.
         </p>
 
         <div className="button-row">
@@ -762,8 +886,8 @@ export function ProofCameraTemplate() {
                 Decision:{" "}
                 <strong>
                   {proofSession.decision.allowCamera
-                    ? "Allow camera"
-                    : "Block camera"}
+                    ? "Camera session unlocked"
+                    : "Camera blocked"}
                 </strong>
               </span>
               <span className="pill">
@@ -798,8 +922,9 @@ export function ProofCameraTemplate() {
         <div>
           <h2 className="section-title">2. Capture a photo</h2>
           <p className="section-copy">
-            Once proof is accepted, the app unlocks both a live camera preview
-            and a simpler fallback that opens the device camera directly.
+            Once proof is accepted, the app unlocks a verified session with both
+            a live camera preview and a simpler fallback that opens the device
+            camera directly. The same session can capture multiple photos.
           </p>
         </div>
 
@@ -849,7 +974,7 @@ export function ProofCameraTemplate() {
               />
             ) : (
               <div className="camera-placeholder">
-                <strong>Camera preview appears here after unlock.</strong>
+                <strong>Camera preview appears here after the session unlocks.</strong>
                 <span>
                   If live preview fails inside a browser or simulator, use Quick
                   capture to open the device camera instead.
@@ -878,7 +1003,8 @@ export function ProofCameraTemplate() {
         <p className="helper">
           <strong>Optional Filecoin sync:</strong> after a photo is saved
           locally, you can upload it to Filecoin Calibration through Synapse
-          SDK and keep the returned storage proof details in the gallery.
+          SDK. If Humano Protocol is configured, the same flow also records the
+          upload onchain.
         </p>
 
         {cameraError ? <p className="helper">{cameraError}</p> : null}
@@ -931,6 +1057,7 @@ export function ProofCameraTemplate() {
                     <strong>{formatDate(photo.createdAt)}</strong>
                     <span>{proofLabel(photo.verificationLevel)}</span>
                     <span>{photo.mimeType}</span>
+                    <span>{formatStorageLabel(photo)}</span>
                     {photo.filecoin ? (
                       <>
                         <span>
@@ -943,10 +1070,34 @@ export function ProofCameraTemplate() {
                             {formatCompactHash(photo.filecoin.transactionHash)}
                           </span>
                         ) : null}
+                        {photo.humanoProtocol ? (
+                          <span>
+                            Humano upload #{photo.humanoProtocol.uploadId}
+                          </span>
+                        ) : null}
                       </>
                     ) : (
                       <span>Stored locally only</span>
                     )}
+                  </div>
+                  <div className="status-row">
+                    <span className="pill pill-success">Local saved</span>
+                    <span
+                      className={`pill ${
+                        photo.filecoin ? "pill-success" : "pill-muted"
+                      }`}
+                    >
+                      {photo.filecoin ? "Filecoin synced" : "Filecoin pending"}
+                    </span>
+                    <span
+                      className={`pill ${
+                        photo.humanoProtocol ? "pill-success" : "pill-muted"
+                      }`}
+                    >
+                      {photo.humanoProtocol
+                        ? "Humano tracked"
+                        : "Humano pending"}
+                    </span>
                   </div>
                   <div className="button-row">
                     <button
@@ -959,10 +1110,27 @@ export function ProofCameraTemplate() {
                       }
                     >
                       {photo.filecoin?.status === "uploaded"
-                        ? "Uploaded to Filecoin"
+                        ? "Filecoin synced"
                         : uploadingPhotoId === photo.id
-                          ? "Uploading..."
-                          : "Upload to Filecoin"}
+                          ? "Syncing..."
+                          : "Sync to Filecoin + Humano"}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => void handleRecordOnHumano(photo)}
+                      disabled={
+                        !photo.filecoin ||
+                        Boolean(photo.humanoProtocol) ||
+                        trackingPhotoId === photo.id
+                      }
+                    >
+                      {photo.humanoProtocol
+                        ? "Tracked on Humano"
+                        : trackingPhotoId === photo.id
+                          ? "Recording..."
+                          : "Record on Humano"}
                     </button>
                   </div>
                   <button

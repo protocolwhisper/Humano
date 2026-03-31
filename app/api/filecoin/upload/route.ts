@@ -4,6 +4,8 @@ import { privateKeyToAccount } from "viem/accounts";
 import { http } from "viem";
 
 import type { FilecoinUploadSuccessResponse } from "@/lib/filecoin";
+import { type HumanoProtocolRecord } from "@/lib/humano-protocol";
+import { recordHumanoProtocolUpload } from "@/lib/server/humano-protocol-recorder";
 
 export const runtime = "nodejs";
 
@@ -33,6 +35,7 @@ export async function POST(request: NextRequest) {
   const createdAt = formData.get("createdAt");
   const verificationLevel = formData.get("verificationLevel");
   const worldAction = formData.get("worldAction");
+  const uploaderKey = formData.get("uploaderKey");
 
   if (!(file instanceof File)) {
     return NextResponse.json(
@@ -59,6 +62,8 @@ export async function POST(request: NextRequest) {
     const account = privateKeyToAccount(privateKey);
     const fileBytes = new Uint8Array(await file.arrayBuffer());
     let transactionHash: string | null = null;
+    let humanoProtocol: HumanoProtocolRecord | null = null;
+    let humanoProtocolError: string | null = null;
 
     const synapse = Synapse.create({
       account,
@@ -88,6 +93,30 @@ export async function POST(request: NextRequest) {
     });
 
     const primaryCopy = uploadResult.copies[0] ?? null;
+    const contractAddress =
+      process.env.HUMANO_PROTOCOL_CONTRACT_ADDRESS as `0x${string}` | undefined;
+
+    if (contractAddress && typeof uploaderKey === "string" && uploaderKey) {
+      try {
+        humanoProtocol = await recordHumanoProtocolUpload({
+          rpcUrl,
+          privateKey,
+          contractAddress,
+          uploaderKey: uploaderKey as `0x${string}`,
+          pieceCid: uploadResult.pieceCid.toString(),
+          worldAction,
+          verificationLevel,
+          createdAt,
+          size: uploadResult.size,
+          retrievalUrl: primaryCopy?.retrievalUrl ?? null,
+        });
+      } catch (error) {
+        humanoProtocolError =
+          error instanceof Error
+            ? error.message
+            : "Humano Protocol contract write failed.";
+      }
+    }
 
     const responseBody: FilecoinUploadSuccessResponse = {
       success: true,
@@ -103,6 +132,8 @@ export async function POST(request: NextRequest) {
         copies: uploadResult.copies.length,
         size: uploadResult.size,
       },
+      humanoProtocol,
+      humanoProtocolError,
     };
 
     return NextResponse.json(responseBody);

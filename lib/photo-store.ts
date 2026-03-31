@@ -1,4 +1,5 @@
 import { VerificationLevel } from "@worldcoin/minikit-js";
+import type { HumanoProtocolRecord } from "@/lib/humano-protocol";
 
 export interface FilecoinPhotoRecord {
   status: "uploaded";
@@ -19,8 +20,10 @@ export interface StoredPhoto {
   mimeType: string;
   verificationLevel: VerificationLevel;
   worldAction?: string;
+  uploaderKey?: string;
   blob: Blob;
   filecoin?: FilecoinPhotoRecord;
+  humanoProtocol?: HumanoProtocolRecord;
 }
 
 const DATABASE_NAME = "proofcam-mini-app";

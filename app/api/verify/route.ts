@@ -87,7 +87,8 @@ export async function POST(request: NextRequest) {
       decision: {
         isVerified: true,
         allowCamera: true,
-        reason: "World proof verified for this action. Camera access allowed.",
+        reason:
+          "World proof verified. A camera session is now unlocked for this user on this device.",
       },
       proof: {
         action: body.action,
