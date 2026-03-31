@@ -21,6 +21,7 @@ pnpm dev
 
 ```env
 APP_ID=app_replace_me
+RP_ID=rp_replace_me
 NEXT_PUBLIC_WORLD_ACTION_DEVICE=unlock-camera-device
 NEXT_PUBLIC_WORLD_ACTION_HUMAN=unlock-camera-human
 NEXT_PUBLIC_ALLOW_DEV_BYPASS=true
@@ -50,7 +51,7 @@ HUMANO_PROTOCOL_CONTRACT_ADDRESS=0xreplace_me
 ## Important
 
 - `NEXT_PUBLIC_ALLOW_DEV_BYPASS=true` is only for local development.
-- Replace `APP_ID` and action ids with your real World credentials before demo/submission.
+- Replace `APP_ID`, `RP_ID`, and action ids with your real World credentials before demo/submission.
 - Real verification works inside World App or the simulator.
 - Filecoin upload needs a funded Calibration wallet in `FILECOIN_WALLET_PRIVATE_KEY`.
 - Onchain tracking needs `HUMANO_PROTOCOL_CONTRACT_ADDRESS` after you deploy the contract.

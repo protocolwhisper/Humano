@@ -336,7 +336,7 @@ export function ProofCameraTemplate() {
         verification_level: selectedProof,
       };
 
-      const { finalPayload } =
+      const { commandPayload, finalPayload } =
         await MiniKit.commandsAsync.verify(verifyPayload);
 
       if (finalPayload.status === "error") {
@@ -355,6 +355,7 @@ export function ProofCameraTemplate() {
           payload: finalPayload as ISuccessResult,
           action: activeProofConfig.action,
           signal,
+          commandPayload,
         }),
       });
 
