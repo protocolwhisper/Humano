@@ -48,10 +48,12 @@ interface ProofSession {
   action: string;
   verificationLevel: VerificationLevel;
   verifiedAt: string;
+  expiresAt: string;
   source: ProofSource;
   signal?: string;
   nullifierHash?: string | null;
   merkleRoot?: string | null;
+  backgroundedAt?: string | null;
   uploaderKey: string;
   decision: ProofDecision;
 }
@@ -61,6 +63,9 @@ interface PhotoCard extends StoredPhoto {
 }
 
 const PROOF_SESSION_KEY = "proofcam-proof-session";
+const PROOF_SESSION_NOTICE_KEY = "proofcam-proof-session-notice";
+const PROOF_SESSION_TTL_MS = 15 * 60 * 1000;
+const PROOF_SESSION_BACKGROUND_GRACE_MS = 75 * 1000;
 const PROFILE_CALLSIGNS_A = [
   "Elara",
   "Nova",
@@ -125,6 +130,65 @@ function createSignal() {
   return `proofcam-${Date.now()}`;
 }
 
+function createSessionExpiry(baseDate?: string) {
+  const base = baseDate ? new Date(baseDate) : new Date();
+
+  return new Date(base.getTime() + PROOF_SESSION_TTL_MS).toISOString();
+}
+
+function setSessionNotice(message: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(PROOF_SESSION_NOTICE_KEY, message);
+}
+
+function consumeSessionNotice() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const notice = window.localStorage.getItem(PROOF_SESSION_NOTICE_KEY);
+
+  if (!notice) {
+    return null;
+  }
+
+  window.localStorage.removeItem(PROOF_SESSION_NOTICE_KEY);
+  return notice;
+}
+
+function getExpiredSessionReason(session: Pick<ProofSession, "expiresAt" | "backgroundedAt">) {
+  const now = Date.now();
+  const expiresAt = Date.parse(session.expiresAt);
+
+  if (Number.isFinite(expiresAt) && expiresAt <= now) {
+    return "Your verification session timed out. Sign in with World ID again.";
+  }
+
+  if (session.backgroundedAt) {
+    const backgroundedAt = Date.parse(session.backgroundedAt);
+
+    if (
+      Number.isFinite(backgroundedAt) &&
+      now - backgroundedAt >= PROOF_SESSION_BACKGROUND_GRACE_MS
+    ) {
+      return "Your verification session expired after the mini app was closed. Sign in with World ID again.";
+    }
+  }
+
+  return null;
+}
+
+function createActiveSession(session: ProofSession): ProofSession {
+  return {
+    ...session,
+    expiresAt: createSessionExpiry(),
+    backgroundedAt: null,
+  };
+}
+
 function loadStoredProofSession() {
   if (typeof window === "undefined") {
     return null;
@@ -153,14 +217,20 @@ function loadStoredProofSession() {
         ? VerificationLevel.Orb
         : VerificationLevel.Device;
 
-    return {
+    const session: ProofSession = {
       action: parsed.action,
       verificationLevel,
       verifiedAt: parsed.verifiedAt,
+      expiresAt:
+        typeof parsed.expiresAt === "string"
+          ? parsed.expiresAt
+          : createSessionExpiry(parsed.verifiedAt),
       source: parsed.source,
       signal: parsed.signal,
       nullifierHash: parsed.nullifierHash ?? null,
       merkleRoot: parsed.merkleRoot ?? null,
+      backgroundedAt:
+        typeof parsed.backgroundedAt === "string" ? parsed.backgroundedAt : null,
       uploaderKey:
         parsed.uploaderKey ??
         deriveUploaderKey({
@@ -173,6 +243,16 @@ function loadStoredProofSession() {
         parsed.decision ??
         createDefaultDecision(verificationLevel, parsed.source),
     };
+
+    const expirationReason = getExpiredSessionReason(session);
+
+    if (expirationReason) {
+      window.localStorage.removeItem(PROOF_SESSION_KEY);
+      setSessionNotice(expirationReason);
+      return null;
+    }
+
+    return session;
   } catch {
     window.localStorage.removeItem(PROOF_SESSION_KEY);
     return null;
@@ -424,9 +504,11 @@ export function ProofCameraTemplate() {
       action: activeProofConfig.action,
       verificationLevel: selectedProof,
       verifiedAt,
+      expiresAt: createSessionExpiry(verifiedAt),
       source: "dev-bypass",
       nullifierHash: null,
       merkleRoot: null,
+      backgroundedAt: null,
       uploaderKey: deriveUploaderKey({
         source: "dev-bypass",
         action: activeProofConfig.action,
@@ -538,10 +620,12 @@ export function ProofCameraTemplate() {
         action: verificationBody.proof.action,
         verificationLevel: verificationBody.proof.verificationLevel,
         verifiedAt,
+        expiresAt: createSessionExpiry(verifiedAt),
         source: "world-id",
         signal: verificationBody.proof.signal,
         nullifierHash: verificationBody.proof.nullifierHash,
         merkleRoot: verificationBody.proof.merkleRoot,
+        backgroundedAt: null,
         uploaderKey: deriveUploaderKey({
           source: "world-id",
           action: verificationBody.proof.action,
@@ -866,10 +950,17 @@ export function ProofCameraTemplate() {
     }, 250);
 
     const storedSession = loadStoredProofSession();
-    setProofSession(storedSession);
+    const startupNotice = consumeSessionNotice();
+
+    if (startupNotice) {
+      setNotice(startupNotice);
+    }
 
     if (storedSession) {
       setSelectedProof(storedSession.verificationLevel);
+      const activeSession = createActiveSession(storedSession);
+      setProofSession(activeSession);
+      persistProofSession(activeSession);
     }
 
     void (async () => {
@@ -916,6 +1007,70 @@ export function ProofCameraTemplate() {
   useEffect(() => {
     photosRef.current = photos;
   }, [photos]);
+
+  useEffect(() => {
+    if (!proofSession) {
+      return;
+    }
+
+    function expireFromEffect(message: string) {
+      stopActiveStream(streamRef, videoRef);
+      setCameraReady(false);
+      setCameraError(null);
+      setActiveTab("feed");
+      setProofSession(null);
+      persistProofSession(null);
+      setNotice(message);
+    }
+
+    function restoreActiveSession(session: ProofSession) {
+      const activeSession = createActiveSession(session);
+      setProofSession(activeSession);
+      persistProofSession(activeSession);
+    }
+
+    const expiresInMs = Math.max(Date.parse(proofSession.expiresAt) - Date.now(), 0);
+    const timeoutId = window.setTimeout(() => {
+      expireFromEffect(
+        "Your verification session timed out. Sign in with World ID again.",
+      );
+    }, expiresInMs);
+
+    function handleVisibilityChange() {
+      if (!proofSession) {
+        return;
+      }
+
+      if (document.visibilityState === "hidden") {
+        const backgroundedSession: ProofSession = {
+          ...proofSession,
+          backgroundedAt: new Date().toISOString(),
+        };
+
+        updateProofSession(backgroundedSession);
+        return;
+      }
+
+      const storedSession = loadStoredProofSession();
+
+      if (!storedSession) {
+        expireFromEffect(
+          consumeSessionNotice() ??
+            "Your verification session expired. Sign in with World ID again.",
+        );
+        return;
+      }
+
+      restoreActiveSession(storedSession);
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [proofSession]);
 
   useEffect(() => {
     return () => {
@@ -981,7 +1136,8 @@ export function ProofCameraTemplate() {
 
           <p className="login-support-copy">
             World verification is the only way into this experience. Once verified,
-            the camera, feed, and profile unlock for the current session.
+            the camera, feed, and profile unlock for a short live session and
+            reset shortly after you leave the mini app.
           </p>
         </section>
 
