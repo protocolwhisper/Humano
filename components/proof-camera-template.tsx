@@ -1535,6 +1535,7 @@ export function ProofCameraTemplate() {
 
                     <div className="viewer-body viewer-body-compact">
                       <div className="viewer-meta-row">
+                        <span className="panel-kicker panel-kicker-inline">Selected shot</span>
                         <span className="feed-handle">
                           @{formatCompactHash(selectedPhoto.id).replaceAll(".", "")}
                         </span>
@@ -1570,10 +1571,10 @@ export function ProofCameraTemplate() {
                           }
                         >
                           {selectedPhoto.filecoin?.status === "uploaded"
-                            ? "SYNCED"
+                            ? "Synced to Filecoin"
                             : uploadingPhotoId === selectedPhoto.id
-                              ? "SYNCING"
-                              : "SYNC"}
+                              ? "Syncing to Filecoin"
+                              : "Sync to Filecoin"}
                         </button>
                         <button
                           type="button"
@@ -1586,17 +1587,17 @@ export function ProofCameraTemplate() {
                           }
                         >
                           {selectedPhoto.humanoProtocol
-                            ? "TRACKED"
+                            ? "Tracked on Humano"
                             : trackingPhotoId === selectedPhoto.id
-                              ? "TRACKING"
-                              : "TRACK"}
+                              ? "Tracking on Humano"
+                              : "Track on Humano"}
                         </button>
                         <button
                           type="button"
                           className="action-button"
                           onClick={() => void handleDeletePhoto(selectedPhoto.id)}
                         >
-                          DROP
+                          Delete photo
                         </button>
                       </div>
 
@@ -1606,7 +1607,7 @@ export function ProofCameraTemplate() {
                           className="action-button"
                           onClick={() => void refreshGallery()}
                         >
-                          REFRESH
+                          Refresh feed
                         </button>
                         <button
                           type="button"
@@ -1614,7 +1615,7 @@ export function ProofCameraTemplate() {
                           onClick={() => void handleClearLibrary()}
                           disabled={!photos.length}
                         >
-                          CLEAR
+                          Clear all
                         </button>
                       </div>
                     </div>

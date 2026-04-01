@@ -6,6 +6,7 @@ export interface FilecoinPhotoRecord {
   uploadedAt: string;
   pieceCid: string;
   transactionHash: string | null;
+  fundingTransactionHash?: string | null;
   retrievalUrl: string | null;
   providerId: string | null;
   dataSetId: string | null;

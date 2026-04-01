@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
     const account = privateKeyToAccount(privateKey);
     const fileBytes = new Uint8Array(await file.arrayBuffer());
     let transactionHash: string | null = null;
+    let fundingTransactionHash: string | null = null;
     let humanoProtocol: HumanoProtocolRecord | null = null;
     let humanoProtocolError: string | null = null;
     let metadataError: string | null = null;
@@ -79,12 +80,31 @@ export async function POST(request: NextRequest) {
       source: "proofcam-mini-app",
     });
 
-    const uploadResult = await synapse.storage.upload(fileBytes, {
+    const contexts = await synapse.storage.createContexts({
       copies: 1,
       metadata: {
         app: "proofcam-mini-app",
         media: "photo",
       },
+    });
+
+    const preparation = await synapse.storage.prepare({
+      context: contexts,
+      dataSize: BigInt(fileBytes.byteLength),
+    });
+
+    if (preparation.transaction) {
+      const preparationResult = await preparation.transaction.execute({
+        onHash: (hash) => {
+          fundingTransactionHash = hash;
+        },
+      });
+
+      fundingTransactionHash ??= preparationResult.hash;
+    }
+
+    const uploadResult = await synapse.storage.upload(fileBytes, {
+      contexts,
       pieceMetadata: {
         capturedAt: createdAt,
         mimeType: file.type || "image/jpeg",
@@ -138,6 +158,7 @@ export async function POST(request: NextRequest) {
         pieceId: primaryCopy?.pieceId.toString() ?? null,
         copies: uploadResult.copies.length,
         size: uploadResult.size,
+        fundingTransactionHash,
       },
       humanoProtocol,
       humanoProtocolError,
