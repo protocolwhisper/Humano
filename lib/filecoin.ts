@@ -43,6 +43,13 @@ export function humanizeFilecoinError(error: string) {
   }
 
   if (
+    error.includes("Insufficient balance") ||
+    error.includes("Balance: 0")
+  ) {
+    return "The backend Filecoin wallet has no spendable testnet USDFC for this payment flow, or Vercel is still running an older private key. Fund the exact backend wallet shown in the error and redeploy.";
+  }
+
+  if (
     error.includes("insufficient funds") ||
     error.includes("funds") ||
     error.includes("USDFC") ||

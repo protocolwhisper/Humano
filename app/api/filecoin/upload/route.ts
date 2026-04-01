@@ -25,6 +25,7 @@ function readRequiredEnv(name: string) {
 }
 
 export async function POST(request: NextRequest) {
+  let backendWalletAddress: string | null = null;
   let formData: FormData;
 
   try {
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
     const rpcUrl =
       process.env.FILECOIN_RPC_URL ?? calibration.rpcUrls.default.http[0];
     const account = privateKeyToAccount(privateKey);
+    backendWalletAddress = account.address;
     const fileBytes = new Uint8Array(await file.arrayBuffer());
     let transactionHash: string | null = null;
     let fundingTransactionHash: string | null = null;
@@ -204,13 +206,22 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(responseBody);
   } catch (error) {
+    const rawMessage =
+      error instanceof Error
+        ? error.message
+        : "Unexpected Filecoin upload error.";
+
+    const errorMessage =
+      backendWalletAddress &&
+      (rawMessage.includes("Insufficient balance") ||
+        rawMessage.includes("Balance: 0"))
+        ? `${rawMessage} Backend wallet: ${backendWalletAddress}. If you already funded this wallet, redeploy Vercel so the latest env is live.`
+        : rawMessage;
+
     return NextResponse.json(
       {
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Unexpected Filecoin upload error.",
+        error: errorMessage,
       },
       { status: 500 },
     );
