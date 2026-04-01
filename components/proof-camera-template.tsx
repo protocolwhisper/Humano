@@ -1070,10 +1070,7 @@ export function ProofCameraTemplate() {
         <header className="login-topbar">
           <div className="login-brand">
             <span className="login-brand-mark" />
-            <div className="login-brand-copy">
-              <span className="login-brand-text">HUMANO_PROTOCOL</span>
-              <span className="login-brand-subtext">World ID gated camera feed</span>
-            </div>
+            <span className="login-brand-text">HUMANDO</span>
           </div>
         </header>
 
@@ -1591,37 +1588,34 @@ export function ProofCameraTemplate() {
                 </div>
               ) : null}
 
-              {selectedInterestCards.length ? (
-                <div className="profile-section-head">
-                  <h3>Interests</h3>
-                </div>
-              ) : null}
-
               {photos.length ? (
-                <div className="profile-section-head">
-                  <h3>Recent shots</h3>
-                </div>
-              ) : null}
+                <>
+                  {selectedInterestCards.length ? (
+                    <div className="profile-section-head">
+                      <h3>Interests</h3>
+                    </div>
+                  ) : null}
 
-              {selectedInterestCards.length ? (
-                <div className="social-vibe-grid social-vibe-grid-bottom">
-                  {selectedInterestCards.map((card) => (
-                    <article
-                      key={card.id}
-                      className="social-vibe-card social-vibe-card-dark social-vibe-card-detail"
-                    >
-                      <span className={`social-vibe-icon social-vibe-icon-${card.icon}`} />
-                      <strong>{card.label}</strong>
-                      <span>{card.subtitle}</span>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="profile-empty-state">
-                  <strong>No interests picked yet.</strong>
-                  <span>Open Explore and choose at least 3 interests to shape this profile.</span>
-                </div>
-              )}
+                  {selectedInterestCards.length ? (
+                    <div className="social-vibe-grid social-vibe-grid-bottom">
+                      {selectedInterestCards.map((card) => (
+                        <article
+                          key={card.id}
+                          className="social-vibe-card social-vibe-card-dark social-vibe-card-detail"
+                        >
+                          <span className={`social-vibe-icon social-vibe-icon-${card.icon}`} />
+                          <strong>{card.label}</strong>
+                          <span>{card.subtitle}</span>
+                        </article>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div className="profile-section-head">
+                    <h3>Recent shots</h3>
+                  </div>
+                </>
+              ) : null}
 
               {photos.length ? (
                 <div className="profile-history-stage">
@@ -1663,7 +1657,7 @@ export function ProofCameraTemplate() {
                 </div>
               ) : (
                 <div className="profile-empty-state">
-                  <strong>No shots yet.</strong>
+                  <strong>No posts yet.</strong>
                   <span>Use the center camera button to capture your first verified moment.</span>
                 </div>
               )}
