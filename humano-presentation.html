@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Humano Pitch Deck</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #09090c;
+        --bg-soft: #121218;
+        --panel: #17171f;
+        --panel-strong: #1d1d28;
+        --line: rgba(255, 255, 255, 0.1);
+        --text: #fff6ea;
+        --muted: #cdbda8;
+        --yellow: #ffd21f;
+        --orange: #ff9710;
+        --orange-deep: #ff6d00;
+        --shadow: 0 28px 90px rgba(0, 0, 0, 0.45);
+        --heading: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+        --body: "Avenir Next", "Segoe UI", Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background:
+          radial-gradient(circle at top left, rgba(255, 151, 16, 0.15), transparent 24%),
+          radial-gradient(circle at bottom right, rgba(255, 210, 31, 0.12), transparent 18%),
+          var(--bg);
+        color: var(--text);
+        font-family: var(--body);
+        overflow: hidden;
+      }
+
+      body {
+        position: relative;
+      }
+
+      .deck {
+        height: 100vh;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .topbar,
+      .controls {
+        position: fixed;
+        left: 0;
+        right: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-left: clamp(20px, 4vw, 48px);
+        padding-right: clamp(20px, 4vw, 48px);
+      }
+
+      .topbar {
+        top: 0;
+        padding-top: 24px;
+      }
+
+      .controls {
+        bottom: 0;
+        padding-bottom: 24px;
+        gap: 16px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        letter-spacing: 0.08em;
+      }
+
+      .brand-mark {
+        width: 18px;
+        height: 18px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2px;
+      }
+
+      .brand-mark span {
+        background: linear-gradient(180deg, var(--yellow), var(--orange));
+        border-radius: 999px;
+      }
+
+      .brand-name,
+      .counter {
+        font-family: var(--heading);
+        font-size: 1.35rem;
+        color: var(--yellow);
+        text-shadow: 3px 3px 0 rgba(255, 109, 0, 0.38);
+      }
+
+      .counter {
+        color: var(--text);
+        text-shadow: none;
+        font-size: 1rem;
+        letter-spacing: 0.12em;
+      }
+
+      .viewport {
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .track {
+        height: 100%;
+        display: flex;
+        transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+        will-change: transform;
+      }
+
+      .slide {
+        width: 100vw;
+        flex: 0 0 100vw;
+        min-height: 100vh;
+        padding: 100px clamp(20px, 4vw, 48px) 110px;
+        display: flex;
+        align-items: stretch;
+        position: relative;
+      }
+
+      .slide::before {
+        content: "";
+        position: absolute;
+        inset: 24px;
+        border-radius: 32px;
+        border: 1px solid var(--line);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+          linear-gradient(135deg, rgba(255, 151, 16, 0.06), rgba(255, 210, 31, 0.03));
+        box-shadow: var(--shadow);
+      }
+
+      .slide-inner {
+        position: relative;
+        z-index: 1;
+        width: min(1280px, 100%);
+        margin: 0 auto;
+        display: grid;
+        gap: 28px;
+        align-content: center;
+      }
+
+      .slide-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+        gap: 28px;
+        align-items: center;
+      }
+
+      .kicker {
+        margin: 0 0 16px;
+        color: var(--yellow);
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        font-size: 0.8rem;
+      }
+
+      h1,
+      h2,
+      h3,
+      strong {
+        margin: 0;
+      }
+
+      h1,
+      h2 {
+        font-family: var(--heading);
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: -0.04em;
+        line-height: 0.88;
+        color: #fff0dc;
+        text-shadow: 5px 5px 0 rgba(255, 109, 0, 0.48);
+      }
+
+      h1 {
+        font-size: clamp(4.8rem, 11vw, 8rem);
+        max-width: 7ch;
+      }
+
+      h2 {
+        font-size: clamp(4rem, 9vw, 7rem);
+        max-width: 8ch;
+      }
+
+      .lede {
+        margin: 18px 0 0;
+        font-size: clamp(1.05rem, 1.6vw, 1.28rem);
+        line-height: 1.55;
+        max-width: 52ch;
+        color: var(--muted);
+      }
+
+      .chips,
+      .stack,
+      .solution-grid,
+      .money-grid,
+      .diagram-foot {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+      }
+
+      .chip,
+      .label {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 10px 16px;
+        border-radius: 14px;
+        background: var(--yellow);
+        color: #17120a;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .stack {
+        flex-direction: column;
+      }
+
+      .card,
+      .note,
+      .flow-node,
+      .metric {
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01)),
+          var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .hero-stat {
+        padding: 22px;
+        background:
+          linear-gradient(135deg, rgba(255, 151, 16, 0.95), rgba(255, 210, 31, 0.9));
+        color: #16110b;
+      }
+
+      .hero-stat span,
+      .metric span,
+      .note span,
+      .money-card span,
+      .solution-card span {
+        display: inline-block;
+        margin-bottom: 10px;
+        font-size: 0.8rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        font-weight: 800;
+      }
+
+      .hero-stat strong {
+        display: block;
+        font-family: var(--heading);
+        font-size: clamp(2rem, 3vw, 3rem);
+        line-height: 0.95;
+      }
+
+      .note {
+        padding: 22px;
+        display: grid;
+        grid-template-columns: 64px 1fr;
+        gap: 14px;
+      }
+
+      .note span {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        background: rgba(255, 210, 31, 0.12);
+        color: var(--yellow);
+      }
+
+      .note p,
+      .solution-card p,
+      .money-card p,
+      .metric p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 1.02rem;
+        line-height: 1.5;
+      }
+
+      .banner {
+        margin-top: 22px;
+        padding: 20px 24px;
+        border-radius: 20px;
+        background: linear-gradient(90deg, var(--yellow), var(--orange));
+        color: #16110b;
+        font-family: var(--heading);
+        font-size: clamp(1.2rem, 2.2vw, 2rem);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .solution-grid,
+      .money-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .solution-card,
+      .money-card {
+        padding: 24px;
+        border-radius: 24px;
+        border: 1px solid var(--line);
+        background:
+          radial-gradient(circle at top right, rgba(255, 210, 31, 0.12), transparent 34%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01)),
+          var(--panel-strong);
+        box-shadow: var(--shadow);
+      }
+
+      .solution-card h3,
+      .money-card h3 {
+        margin-bottom: 10px;
+        font-family: var(--heading);
+        font-size: 2rem;
+        letter-spacing: -0.03em;
+        line-height: 0.95;
+        text-transform: uppercase;
+      }
+
+      .diagram-intro {
+        max-width: 72ch;
+      }
+
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 14px;
+        align-items: center;
+      }
+
+      .flow-step {
+        display: contents;
+      }
+
+      .flow-node {
+        padding: 22px 18px;
+        min-height: 170px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .flow-node strong {
+        font-family: var(--heading);
+        font-size: 1.9rem;
+        line-height: 0.95;
+        text-transform: uppercase;
+      }
+
+      .flow-arrow {
+        position: relative;
+        height: 4px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--yellow), var(--orange));
+        align-self: center;
+        margin: 0 -4px;
+      }
+
+      .flow-arrow::after {
+        content: "";
+        position: absolute;
+        right: -2px;
+        top: 50%;
+        width: 14px;
+        height: 14px;
+        border-top: 4px solid var(--orange);
+        border-right: 4px solid var(--orange);
+        transform: translateY(-50%) rotate(45deg);
+      }
+
+      .diagram-row {
+        display: grid;
+        grid-template-columns: 1fr 64px 1fr 64px 1fr 64px 1fr 64px 1fr;
+        gap: 14px;
+        align-items: center;
+      }
+
+      .diagram-foot {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .metric {
+        padding: 22px;
+      }
+
+      .metric strong {
+        display: block;
+        margin-bottom: 10px;
+        font-family: var(--heading);
+        font-size: 1.8rem;
+        line-height: 0.95;
+        text-transform: uppercase;
+      }
+
+      .money-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 0.95fr) minmax(400px, 1.05fr);
+        gap: 28px;
+        align-items: center;
+      }
+
+      .money-panel {
+        padding: 24px;
+        border-radius: 26px;
+        background:
+          radial-gradient(circle at top right, rgba(255, 151, 16, 0.16), transparent 32%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
+          var(--panel);
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow);
+      }
+
+      .money-panel p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.55;
+        font-size: 1.02rem;
+      }
+
+      .nav-left,
+      .nav-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .button {
+        min-width: 92px;
+        height: 54px;
+        padding: 0 20px;
+        border: 0;
+        border-radius: 16px;
+        background: linear-gradient(180deg, var(--yellow), var(--orange));
+        color: #17120a;
+        font-family: var(--heading);
+        font-size: 1rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+
+      .button.secondary {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        border: 1px solid var(--line);
+      }
+
+      .dots {
+        display: inline-flex;
+        gap: 10px;
+      }
+
+      .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        border: 0;
+        background: rgba(255, 255, 255, 0.18);
+        cursor: pointer;
+      }
+
+      .dot.active {
+        background: linear-gradient(180deg, var(--yellow), var(--orange));
+        box-shadow: 0 0 0 6px rgba(255, 210, 31, 0.14);
+      }
+
+      .hint {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      @media (max-width: 1100px) {
+        .slide-grid,
+        .money-layout,
+        .solution-grid,
+        .diagram-foot,
+        .diagram-row {
+          grid-template-columns: 1fr;
+        }
+
+        .diagram-row {
+          gap: 12px;
+        }
+
+        .flow-arrow {
+          width: 4px;
+          height: 40px;
+          margin: 0 auto;
+        }
+
+        .flow-arrow::after {
+          right: 50%;
+          top: auto;
+          bottom: -2px;
+          transform: translateX(50%) rotate(135deg);
+        }
+
+        .slide {
+          overflow-y: auto;
+        }
+
+        .slide::before {
+          inset: 18px;
+        }
+
+        .solution-grid,
+        .money-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .topbar,
+        .controls,
+        .slide {
+          padding-left: 18px;
+          padding-right: 18px;
+        }
+
+        .topbar {
+          padding-top: 18px;
+        }
+
+        .controls {
+          padding-bottom: 18px;
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .nav-left,
+        .nav-right {
+          justify-content: center;
+        }
+
+        .counter,
+        .hint {
+          display: none;
+        }
+
+        h1,
+        h2 {
+          max-width: none;
+        }
+      }
+
+      @media print {
+        html,
+        body {
+          overflow: visible;
+          background: #0a0a0d;
+        }
+
+        .topbar,
+        .controls {
+          display: none;
+        }
+
+        .deck,
+        .viewport,
+        .track {
+          height: auto;
+          overflow: visible;
+        }
+
+        .track {
+          display: block;
+          transform: none !important;
+        }
+
+        .slide {
+          page-break-after: always;
+          width: auto;
+          min-height: 100vh;
+          overflow: visible;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="deck">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="brand-name">HUMANO</div>
+        </div>
+        <div class="counter"><span id="counter">01</span> / 04</div>
+      </header>
+
+      <div class="viewport">
+        <div class="track" id="track">
+          <section class="slide">
+            <div class="slide-inner">
+              <div class="slide-grid">
+                <div>
+                  <p class="kicker">SLIDE 01 / PROBLEM</p>
+                  <h1>TRUST IN CONTENT BROKE.</h1>
+                  <p class="lede">
+                    AI made content abundant, but it also broke confidence in who
+                    made something, whether it was captured by a real human, and
+                    whether the media can still be trusted downstream.
+                  </p>
+                  <div class="chips" style="margin-top: 20px;">
+                    <div class="chip">AI overflow</div>
+                    <div class="chip">deepfake fatigue</div>
+                    <div class="chip">zero provenance</div>
+                  </div>
+                </div>
+
+                <div class="stack">
+                  <div class="card hero-stat">
+                    <span>SHIFT</span>
+                    <strong>Human credibility is now the premium layer.</strong>
+                  </div>
+
+                  <article class="note">
+                    <span>01</span>
+                    <p>
+                      Feeds can no longer distinguish real people from generated
+                      actors at internet scale.
+                    </p>
+                  </article>
+
+                  <article class="note">
+                    <span>02</span>
+                    <p>
+                      Brands, communities, and marketplaces need proof before
+                      they can trust content or pay for it.
+                    </p>
+                  </article>
+
+                  <article class="note">
+                    <span>03</span>
+                    <p>
+                      The missing layer is not more content. It is provenance
+                      that starts at capture.
+                    </p>
+                  </article>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="slide">
+            <div class="slide-inner">
+              <div class="slide-grid">
+                <div>
+                  <p class="kicker">SLIDE 02 / SOLUTION</p>
+                  <h2>PROOF OF HUMAN. PROOF OF CAPTURE.</h2>
+                  <p class="lede">
+                    Humano turns content creation into a verified flow: prove the
+                    person, unlock the camera session, then persist provenance so
+                    every asset carries trust with it.
+                  </p>
+                  <div class="banner">Real human. Real media. Real history.</div>
+                </div>
+
+                <div class="solution-grid">
+                  <article class="solution-card">
+                    <span>01</span>
+                    <h3>Verify the human</h3>
+                    <p>
+                      World ID confirms personhood before creation begins.
+                    </p>
+                  </article>
+
+                  <article class="solution-card">
+                    <span>02</span>
+                    <h3>Capture inside session</h3>
+                    <p>
+                      Humano links media capture to a verified moment on-device.
+                    </p>
+                  </article>
+
+                  <article class="solution-card">
+                    <span>03</span>
+                    <h3>Store provenance</h3>
+                    <p>
+                      Filecoin and FEVM make the media trail portable and auditable.
+                    </p>
+                  </article>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="slide">
+            <div class="slide-inner">
+              <div class="diagram-intro">
+                <p class="kicker">SLIDE 03 / DIAGRAM</p>
+                <h2>HOW HUMANO FLOWS</h2>
+                <p class="lede">
+                  We sit between proof-of-personhood and content distribution,
+                  converting a capture event into reusable trust infrastructure.
+                </p>
+              </div>
+
+              <div class="diagram-row">
+                <div class="flow-node">
+                  <span>01</span>
+                  <strong>World ID proof</strong>
+                </div>
+                <div class="flow-arrow" aria-hidden="true"></div>
+                <div class="flow-node">
+                  <span>02</span>
+                  <strong>Humano camera session</strong>
+                </div>
+                <div class="flow-arrow" aria-hidden="true"></div>
+                <div class="flow-node">
+                  <span>03</span>
+                  <strong>Media capture</strong>
+                </div>
+                <div class="flow-arrow" aria-hidden="true"></div>
+                <div class="flow-node">
+                  <span>04</span>
+                  <strong>Filecoin + FEVM record</strong>
+                </div>
+                <div class="flow-arrow" aria-hidden="true"></div>
+                <div class="flow-node">
+                  <span>05</span>
+                  <strong>Trusted feed and APIs</strong>
+                </div>
+              </div>
+
+              <div class="diagram-foot">
+                <article class="metric">
+                  <span>INPUT</span>
+                  <strong>Identity event</strong>
+                  <p>Verified personhood becomes the first data point in the chain.</p>
+                </article>
+
+                <article class="metric">
+                  <span>ENGINE</span>
+                  <strong>Capture plus provenance</strong>
+                  <p>
+                    Humano combines camera unlock, storage, and onchain recording.
+                  </p>
+                </article>
+
+                <article class="metric">
+                  <span>OUTPUT</span>
+                  <strong>Trust rails</strong>
+                  <p>
+                    Platforms reuse the result for moderation, discovery, licensing,
+                    and creator reputation.
+                  </p>
+                </article>
+              </div>
+            </div>
+          </section>
+
+          <section class="slide">
+            <div class="slide-inner">
+              <div class="money-layout">
+                <div>
+                  <p class="kicker">SLIDE 04 / MONETIZATION</p>
+                  <h2>MONETIZE TRUST, NOT ATTENTION.</h2>
+                  <p class="lede">
+                    Humano becomes the trust layer for apps and marketplaces that
+                    need verified human media, then expands into creator tooling
+                    and content commerce.
+                  </p>
+                  <div class="banner">Start with communities. Scale into infrastructure.</div>
+                </div>
+
+                <div class="money-panel">
+                  <div class="money-grid">
+                    <article class="money-card">
+                      <span>API FEES</span>
+                      <h3>Verification infrastructure</h3>
+                      <p>
+                        Charge platforms per proof check, capture unlock, and provenance read.
+                      </p>
+                    </article>
+
+                    <article class="money-card">
+                      <span>SAAS</span>
+                      <h3>Creator and community tools</h3>
+                      <p>
+                        Sell premium dashboards for verified posting, moderation, and reputation.
+                      </p>
+                    </article>
+
+                    <article class="money-card">
+                      <span>NETWORK</span>
+                      <h3>Content commerce rails</h3>
+                      <p>
+                        Take a fee when verified media is licensed, syndicated, or bought.
+                      </p>
+                    </article>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <footer class="controls">
+        <div class="nav-left">
+          <button class="button secondary" id="prev" type="button">Prev</button>
+          <button class="button" id="next" type="button">Next</button>
+        </div>
+        <div class="dots" aria-label="Slide navigation">
+          <button class="dot active" data-slide="0" type="button" aria-label="Go to slide 1"></button>
+          <button class="dot" data-slide="1" type="button" aria-label="Go to slide 2"></button>
+          <button class="dot" data-slide="2" type="button" aria-label="Go to slide 3"></button>
+          <button class="dot" data-slide="3" type="button" aria-label="Go to slide 4"></button>
+        </div>
+        <div class="nav-right">
+          <div class="hint">Use arrow keys or the buttons to present.</div>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      const track = document.getElementById("track");
+      const counter = document.getElementById("counter");
+      const prev = document.getElementById("prev");
+      const next = document.getElementById("next");
+      const dots = Array.from(document.querySelectorAll(".dot"));
+      const total = dots.length;
+      let index = 0;
+
+      function render() {
+        track.style.transform = `translateX(-${index * 100}vw)`;
+        counter.textContent = String(index + 1).padStart(2, "0");
+        dots.forEach((dot, dotIndex) => {
+          dot.classList.toggle("active", dotIndex === index);
+        });
+        prev.disabled = index === 0;
+        next.disabled = index === total - 1;
+        prev.style.opacity = index === 0 ? "0.45" : "1";
+        next.style.opacity = index === total - 1 ? "0.45" : "1";
+      }
+
+      function goTo(nextIndex) {
+        index = Math.max(0, Math.min(total - 1, nextIndex));
+        render();
+      }
+
+      prev.addEventListener("click", () => goTo(index - 1));
+      next.addEventListener("click", () => goTo(index + 1));
+
+      dots.forEach((dot) => {
+        dot.addEventListener("click", () => {
+          goTo(Number(dot.dataset.slide));
+        });
+      });
+
+      window.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") {
+          event.preventDefault();
+          goTo(index + 1);
+        }
+
+        if (event.key === "ArrowLeft" || event.key === "PageUp") {
+          event.preventDefault();
+          goTo(index - 1);
+        }
+      });
+
+      render();
+    </script>
+  </body>
+</html>

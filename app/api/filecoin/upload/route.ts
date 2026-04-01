@@ -14,6 +14,8 @@ import {
 
 export const runtime = "nodejs";
 
+const FILECOIN_FUNDING_BUFFER_WEI = BigInt("1000000000000000"); // 0.001 USDFC safety margin
+
 function readRequiredEnv(name: string) {
   const value = process.env[name];
 
@@ -103,6 +105,13 @@ export async function POST(request: NextRequest) {
       });
 
       fundingTransactionHash ??= preparationResult.hash;
+
+      // Calibration warm-storage commits can fail on tiny rounding gaps even after prepare().
+      // Add a small extra USDFC buffer so the payer is safely above the provider minimum.
+      await synapse.payments.fundSync({
+        amount: FILECOIN_FUNDING_BUFFER_WEI,
+        needsFwssMaxApproval: false,
+      });
     }
 
     const uploadResult = await synapse.storage.upload(fileBytes, {
