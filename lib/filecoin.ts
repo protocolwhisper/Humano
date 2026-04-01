@@ -53,5 +53,9 @@ export function humanizeFilecoinError(error: string) {
     return "The Filecoin Calibration wallet likely needs testnet funds, gas, or payment approvals before uploads can succeed.";
   }
 
+  if (error.includes("InsufficientLockupFunds")) {
+    return "This wallet has Calibration FIL for gas, but the warm-storage provider sees zero lockup funds available for the storage commit. Top up or approve the storage lockup balance for this payer before syncing.";
+  }
+
   return error;
 }

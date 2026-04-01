@@ -370,7 +370,7 @@ export function ProofCameraTemplate() {
   };
   const selectedPhoto =
     photos.find((photo) => photo.id === selectedPhotoId) ?? photos[0] ?? null;
-  const recentFeedPhotos = photos.slice(0, 4);
+  const recentFeedPhotos = photos.slice(0, 3);
   const profileHasDetails = Boolean(
     savedProfile.displayName.trim() ||
       savedProfile.handle.trim() ||
@@ -1392,12 +1392,6 @@ export function ProofCameraTemplate() {
           </div>
         </section>
 
-        <div className="login-statusbar">
-          <span>HUMAN_VERIFICATION_STANDBY</span>
-          <span>LATENCY: 14MS</span>
-          <span className="login-status-dot" />
-        </div>
-
         <nav className="login-nav">
           <button type="button" className="login-nav-item active" aria-label="Login">
             <span className="login-nav-glyph login-nav-glyph-enter" />
@@ -1446,193 +1440,149 @@ export function ProofCameraTemplate() {
       <div className="app-screen-shell">
         {activeTab === "feed" ? (
           <div className="app-screen-scroll">
-            <section className="feed-overview">
-              <div className="feed-overview-copy">
-                <span className="panel-kicker">Verified feed</span>
-                <h2>Captured pulse</h2>
-                <p>Real moments from your verified camera flow, ready for sync and tracking.</p>
-              </div>
-              <div className="feed-overview-stats">
-                <span className="mini-indicator">{proofLabel(unlockedSession.verificationLevel)}</span>
-                <span className="mini-indicator">{photoCount} shot{photoCount === 1 ? "" : "s"}</span>
-                <span className="mini-indicator">{trackedPhotosCount} tracked</span>
-              </div>
-            </section>
-
-            {selectedPhoto ? (
-              <section className="viewer-panel" id="viewer-panel">
-                <div className="panel-head">
-                  <div>
-                    <span className="panel-kicker">Latest shot</span>
-                    <h2>Review the capture</h2>
-                  </div>
-                  <div className="mini-indicators">
-                    <span className="mini-indicator">
-                      {proofLabel(selectedPhoto.verificationLevel)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="viewer-stage">
-                  <div className="viewer-media">
-                    <Image
-                      src={selectedPhoto.previewUrl}
-                      alt={`Captured ${formatDate(selectedPhoto.createdAt)}`}
-                      width={1400}
-                      height={1800}
-                      sizes="100vw"
-                      unoptimized
-                    />
-                  </div>
-
-                  <div className="viewer-body">
-                    <span className="feed-handle">
-                      @{formatCompactHash(selectedPhoto.id).replaceAll(".", "")}
-                    </span>
-                    <span className="feed-caption">{formatDate(selectedPhoto.createdAt)}</span>
-
-                    <div className="status-row">
-                      <span className="pill pill-success">LOCAL</span>
-                      <span
-                        className={`pill ${
-                          selectedPhoto.filecoin ? "pill-success" : "pill-muted"
-                        }`}
-                      >
-                        {selectedPhoto.filecoin ? "FILECOIN" : "PENDING"}
-                      </span>
-                      <span
-                        className={`pill ${
-                          selectedPhoto.humanoProtocol ? "pill-success" : "pill-muted"
-                        }`}
-                      >
-                        {selectedPhoto.humanoProtocol ? "HUMANO" : "OFFCHAIN"}
-                      </span>
+            <section className="viewer-panel viewer-panel-single" id="viewer-panel">
+              {selectedPhoto ? (
+                <>
+                  <div className="panel-head">
+                    <div>
+                      <span className="panel-kicker">Verified feed</span>
+                      <h2>Captured pulse</h2>
+                      <p className="viewer-subcopy">
+                        Real moments from your verified camera flow, ready for sync and tracking.
+                      </p>
                     </div>
-
-                    {selectedPhoto.filecoin ? (
-                      <div className="feed-data">
-                        <span className="mono-pill">
-                          piece_cid: {formatCompactHash(selectedPhoto.filecoin.pieceCid)}
-                        </span>
-                        {selectedPhoto.humanoProtocol ? (
-                          <span className="mono-pill">
-                            humano_id: #{selectedPhoto.humanoProtocol.uploadId}
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : null}
-
-                    <div className="feed-actions">
-                      <button
-                        type="button"
-                        className="action-button action-button-primary"
-                        onClick={() => void handleUploadToFilecoin(selectedPhoto)}
-                        disabled={
-                          uploadingPhotoId === selectedPhoto.id ||
-                          selectedPhoto.filecoin?.status === "uploaded"
-                        }
-                      >
-                        {selectedPhoto.filecoin?.status === "uploaded"
-                          ? "SYNCED"
-                          : uploadingPhotoId === selectedPhoto.id
-                            ? "SYNCING"
-                            : "SYNC TO FILECOIN"}
-                      </button>
-                      <button
-                        type="button"
-                        className="action-button"
-                        onClick={() => void handleRecordOnHumano(selectedPhoto)}
-                        disabled={
-                          !selectedPhoto.filecoin ||
-                          Boolean(selectedPhoto.humanoProtocol) ||
-                          trackingPhotoId === selectedPhoto.id
-                        }
-                      >
-                        {selectedPhoto.humanoProtocol
-                          ? "TRACKED"
-                          : trackingPhotoId === selectedPhoto.id
-                            ? "TRACKING"
-                            : "TRACK ON HUMANO"}
-                      </button>
-                      <button
-                        type="button"
-                        className="action-button"
-                        onClick={() => void handleDeletePhoto(selectedPhoto.id)}
-                      >
-                        DROP SHOT
-                      </button>
+                    <div className="mini-indicators">
+                      <span className="mini-indicator">{proofLabel(unlockedSession.verificationLevel)}</span>
+                      <span className="mini-indicator">{photoCount} shot{photoCount === 1 ? "" : "s"}</span>
                     </div>
                   </div>
-                </div>
-              </section>
-            ) : null}
 
-            <section className="feed-panel-dark" id="feed-panel">
-              <div className="panel-head">
-                <div>
-                  <span className="panel-kicker">Verified feed</span>
-                  <h2>Captured pulse</h2>
-                </div>
-                <div className="action-strip action-strip-tight">
-                  <button
-                    type="button"
-                    className="action-button"
-                    onClick={() => void refreshGallery()}
-                  >
-                    REFRESH
-                  </button>
-                  <button
-                    type="button"
-                    className="action-button"
-                    onClick={() => void handleClearLibrary()}
-                    disabled={!photos.length}
-                  >
-                    CLEAR
-                  </button>
-                </div>
-              </div>
+                  <div className="viewer-stage viewer-stage-compact">
+                    <div className="viewer-media viewer-media-compact">
+                      <Image
+                        src={selectedPhoto.previewUrl}
+                        alt={`Captured ${formatDate(selectedPhoto.createdAt)}`}
+                        width={1200}
+                        height={1200}
+                        sizes="100vw"
+                        unoptimized
+                      />
+                    </div>
 
-              {isGalleryLoading ? (
-                <div className="empty-feed">Loading the verified feed...</div>
-              ) : recentFeedPhotos.length ? (
-                <div className="feed-grid">
-                  {recentFeedPhotos.map((photo) => (
-                    <button
-                      key={photo.id}
-                      type="button"
-                      className={`feed-card ${selectedPhoto?.id === photo.id ? "selected" : ""}`}
-                      onClick={() => openPhoto(photo.id)}
-                    >
-                      <div className="feed-card-media">
-                        <Image
-                          src={photo.previewUrl}
-                          alt={`Captured ${formatDate(photo.createdAt)}`}
-                          width={1200}
-                          height={1400}
-                          sizes="(max-width: 520px) 100vw, 50vw"
-                          unoptimized
-                        />
-                      </div>
-                      <div className="feed-card-body">
+                    <div className="viewer-body viewer-body-compact">
+                      <div className="viewer-meta-row">
                         <span className="feed-handle">
-                          @{formatCompactHash(photo.id).replaceAll(".", "")}
+                          @{formatCompactHash(selectedPhoto.id).replaceAll(".", "")}
                         </span>
-                        <span className="feed-metadata">
-                          {proofLabel(photo.verificationLevel)}
-                        </span>
-                        <span className="feed-caption">{formatDate(photo.createdAt)}</span>
-                        <span className="feed-caption">Tap to open shot</span>
+                        <span className="feed-caption">{formatDate(selectedPhoto.createdAt)}</span>
                       </div>
-                    </button>
-                  ))}
-                </div>
+
+                      <div className="status-row">
+                        <span className="pill pill-success">LOCAL</span>
+                        <span
+                          className={`pill ${
+                            selectedPhoto.filecoin ? "pill-success" : "pill-muted"
+                          }`}
+                        >
+                          {selectedPhoto.filecoin ? "FILECOIN" : "PENDING"}
+                        </span>
+                        <span
+                          className={`pill ${
+                            selectedPhoto.humanoProtocol ? "pill-success" : "pill-muted"
+                          }`}
+                        >
+                          {selectedPhoto.humanoProtocol ? "HUMANO" : "OFFCHAIN"}
+                        </span>
+                      </div>
+
+                      <div className="feed-actions feed-actions-compact">
+                        <button
+                          type="button"
+                          className="action-button action-button-primary"
+                          onClick={() => void handleUploadToFilecoin(selectedPhoto)}
+                          disabled={
+                            uploadingPhotoId === selectedPhoto.id ||
+                            selectedPhoto.filecoin?.status === "uploaded"
+                          }
+                        >
+                          {selectedPhoto.filecoin?.status === "uploaded"
+                            ? "SYNCED"
+                            : uploadingPhotoId === selectedPhoto.id
+                              ? "SYNCING"
+                              : "SYNC"}
+                        </button>
+                        <button
+                          type="button"
+                          className="action-button"
+                          onClick={() => void handleRecordOnHumano(selectedPhoto)}
+                          disabled={
+                            !selectedPhoto.filecoin ||
+                            Boolean(selectedPhoto.humanoProtocol) ||
+                            trackingPhotoId === selectedPhoto.id
+                          }
+                        >
+                          {selectedPhoto.humanoProtocol
+                            ? "TRACKED"
+                            : trackingPhotoId === selectedPhoto.id
+                              ? "TRACKING"
+                              : "TRACK"}
+                        </button>
+                        <button
+                          type="button"
+                          className="action-button"
+                          onClick={() => void handleDeletePhoto(selectedPhoto.id)}
+                        >
+                          DROP
+                        </button>
+                      </div>
+
+                      {recentFeedPhotos.length > 1 ? (
+                        <div className="feed-thumb-row">
+                          {recentFeedPhotos.map((photo) => (
+                            <button
+                              key={photo.id}
+                              type="button"
+                              className={`feed-thumb ${selectedPhoto.id === photo.id ? "selected" : ""}`}
+                              onClick={() => openPhoto(photo.id)}
+                            >
+                              <Image
+                                src={photo.previewUrl}
+                                alt={`Captured ${formatDate(photo.createdAt)}`}
+                                width={320}
+                                height={320}
+                                unoptimized
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      <div className="action-strip action-strip-tight viewer-utility-row">
+                        <button
+                          type="button"
+                          className="action-button"
+                          onClick={() => void refreshGallery()}
+                        >
+                          REFRESH
+                        </button>
+                        <button
+                          type="button"
+                          className="action-button"
+                          onClick={() => void handleClearLibrary()}
+                          disabled={!photos.length}
+                        >
+                          CLEAR
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : isGalleryLoading ? (
+                <div className="empty-feed">Loading the verified feed...</div>
               ) : (
                 <div className="empty-feed">
                   <strong>No posts yet.</strong>
-                  <span>
-                    Verify the session, shoot a photo, then sync it through Filecoin
-                    and Humano to light up this feed.
-                  </span>
+                  <span>Use the center camera button to capture your first verified moment.</span>
                 </div>
               )}
             </section>
@@ -1655,10 +1605,10 @@ export function ProofCameraTemplate() {
                   </div>
 
                   <p className="access-lede">
-                    Choose at least 3 interests like travel, foodie, art, or nightlife before you start posting.
+                    Choose at least 3 interests before you start posting.
                   </p>
 
-                  <div className="social-vibe-grid">
+                  <div className="social-vibe-grid social-vibe-grid-compact">
                     {vibeCards.map((card) => (
                       <button
                         key={card.id}
@@ -1698,18 +1648,14 @@ export function ProofCameraTemplate() {
                   </div>
 
                   <p className="access-lede">
-                    These interests are already saved and are shaping what appears in your feed.
+                    These interests are already saved and shaping what appears in your feed.
                   </p>
 
-                  <div className="explore-interest-list">
+                  <div className="profile-interest-row profile-interest-row-centered">
                     {selectedInterestCards.map((card) => (
-                      <article key={card.id} className="explore-interest-item">
-                        <span className={`social-vibe-icon social-vibe-icon-${card.icon}`} />
-                        <div>
-                          <strong>{card.label}</strong>
-                          <span>{card.subtitle}</span>
-                        </div>
-                      </article>
+                      <span key={card.id} className="profile-interest-chip">
+                        {card.label}
+                      </span>
                     ))}
                   </div>
                 </>
@@ -1839,15 +1785,11 @@ export function ProofCameraTemplate() {
                 <span className="profile-stat-pill">{trackedPhotosCount} proofs</span>
               </div>
 
-              {selectedInterestCards.length ? (
-                <div className="profile-interest-row">
-                  {selectedInterestCards.map((card) => (
-                    <span key={card.id} className="profile-interest-chip">
-                      {card.label}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
+              <p className="profile-meta-note">
+                {selectedInterestCards.length
+                  ? `${selectedInterestCards.length} interests are saved in your feed profile.`
+                  : "No interests saved yet."}
+              </p>
 
               <div className="profile-section-head">
                 <h3>Profile details</h3>
@@ -1916,7 +1858,7 @@ export function ProofCameraTemplate() {
               {photos.length ? (
                 <div className="profile-history-stage profile-history-stage-compact">
                   <div className="profile-history-grid">
-                    {photos.slice(0, 6).map((photo) => (
+                    {photos.slice(0, 3).map((photo) => (
                       <button
                         key={photo.id}
                         type="button"

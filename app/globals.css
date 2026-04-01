@@ -84,10 +84,10 @@ video {
 
 .app-screen-scroll {
   height: 100%;
-  overflow-y: auto;
-  display: grid;
-  align-content: start;
-  padding-bottom: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0;
 }
 
 .kinetic-topbar,
@@ -316,6 +316,15 @@ video {
 .profile-panel {
   margin-top: 18px;
   padding: 18px;
+}
+
+.viewer-panel-single,
+.protocol-panel,
+.profile-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .feed-overview {
@@ -1015,6 +1024,13 @@ video {
   margin-top: 14px;
 }
 
+.profile-meta-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.4;
+}
+
 .profile-feature-card,
 .profile-thumb-card {
   border: 0;
@@ -1036,7 +1052,7 @@ video {
 
 .profile-history-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -1081,6 +1097,10 @@ video {
   margin-top: 14px;
 }
 
+.profile-interest-row-centered {
+  justify-content: center;
+}
+
 .profile-interest-chip {
   color: var(--accent-2);
 }
@@ -1097,6 +1117,7 @@ video {
 
 .profile-form {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-top: 16px;
 }
@@ -1105,6 +1126,10 @@ video {
   display: grid;
   gap: 8px;
   text-align: left;
+}
+
+.profile-field:last-of-type {
+  grid-column: 1 / -1;
 }
 
 .profile-field span {
@@ -1133,6 +1158,7 @@ video {
 
 .profile-save-button {
   width: 100%;
+  grid-column: 1 / -1;
   justify-content: center;
 }
 
@@ -1231,6 +1257,24 @@ video {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-top: 18px;
+}
+
+.social-vibe-grid-compact {
+  gap: 8px;
+}
+
+.social-vibe-grid-compact .social-vibe-card {
+  min-height: 108px;
+  padding: 12px;
+}
+
+.social-vibe-grid-compact .social-vibe-card strong {
+  font-size: 1.2rem;
+}
+
+.social-vibe-grid-compact .social-vibe-card span:last-child {
+  font-size: 0.82rem;
+  line-height: 1.25;
 }
 
 .social-vibe-grid-bottom {
@@ -1517,6 +1561,72 @@ video {
   gap: 12px;
 }
 
+.viewer-subcopy {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.viewer-stage-compact {
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.viewer-media-compact {
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+}
+
+.viewer-media-compact img {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
+.viewer-body-compact {
+  gap: 10px;
+}
+
+.viewer-meta-row {
+  display: grid;
+  gap: 4px;
+}
+
+.feed-actions-compact {
+  margin-top: 0;
+}
+
+.feed-thumb-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.feed-thumb {
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #15171d;
+}
+
+.feed-thumb.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(255, 158, 26, 0.35);
+}
+
+.feed-thumb img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
+.viewer-utility-row {
+  margin-top: 0;
+}
+
 .feed-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1631,9 +1741,10 @@ video {
   padding:
     calc(18px + env(safe-area-inset-top, 0px))
     18px
-    calc(124px + env(safe-area-inset-bottom, 0px));
+    calc(92px + env(safe-area-inset-bottom, 0px));
   display: grid;
   align-content: start;
+  overflow: hidden;
   background:
     radial-gradient(circle at 50% 18%, rgba(255, 158, 26, 0.14), transparent 28%),
     linear-gradient(180deg, #121216, #121319 42%, #17181f);
@@ -1879,25 +1990,7 @@ video {
 }
 
 .login-statusbar {
-  position: fixed;
-  left: 50%;
-  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
-  width: min(520px, 100%);
-  min-height: 34px;
-  padding: 8px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(34, 35, 43, 0.92);
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  color: #93969f;
-  font-family: var(--font-display);
-  font-size: 0.76rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  overflow: hidden;
+  display: none;
 }
 
 .login-statusbar span:first-child {
