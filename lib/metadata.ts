@@ -4,9 +4,16 @@ export interface ProfileMetadataStats {
   humanoCount: number;
 }
 
+export interface ProfileMetadataProfile {
+  displayName: string;
+  handle: string;
+  bio: string;
+}
+
 export interface ProfileMetadataSnapshot {
   interests: string[];
   stats: ProfileMetadataStats;
+  profile: ProfileMetadataProfile;
 }
 
 export interface ProfileMetadataSuccessResponse {

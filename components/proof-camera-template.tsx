@@ -72,26 +72,6 @@ const PROOF_SESSION_NOTICE_KEY = "proofcam-proof-session-notice";
 const PROOF_INTERESTS_KEY = "proofcam-interest-profile";
 const PROOF_SESSION_TTL_MS = 15 * 60 * 1000;
 const PROOF_SESSION_BACKGROUND_GRACE_MS = 75 * 1000;
-const PROFILE_CALLSIGNS_A = [
-  "Elara",
-  "Nova",
-  "Vanta",
-  "Kairo",
-  "Lyric",
-  "Sable",
-  "Astra",
-  "Cinder",
-];
-const PROFILE_CALLSIGNS_B = [
-  "Vox",
-  "Sync",
-  "Trace",
-  "Pulse",
-  "Grid",
-  "Vector",
-  "Static",
-  "Drift",
-];
 
 function createDefaultDecision(
   verificationLevel: VerificationLevel,
@@ -338,38 +318,6 @@ function humanizeError(error: unknown) {
   return "Something went wrong.";
 }
 
-function seedNumber(seed: string, offset: number) {
-  return Number.parseInt(seed.slice(offset, offset + 6), 16) || 0;
-}
-
-function createProfileIdentity(session: ProofSession | null) {
-  const seed = session?.uploaderKey ?? "feedfacec0de";
-  const first = PROFILE_CALLSIGNS_A[seedNumber(seed, 2) % PROFILE_CALLSIGNS_A.length];
-  const second = PROFILE_CALLSIGNS_B[seedNumber(seed, 10) % PROFILE_CALLSIGNS_B.length];
-  const stamp = `${seed.slice(2, 5).toUpperCase()} ${seed.slice(5, 8).toUpperCase()}`;
-  const handle = `${first}${second}_${seed.slice(8, 11)}`.toLowerCase();
-  const pulseYear = session
-    ? new Date(session.verifiedAt).getFullYear().toString().slice(-2)
-    : "26";
-
-  return {
-    displayName: `${first} ${second}`,
-    handle,
-    stamp,
-    credential:
-      session?.verificationLevel === VerificationLevel.Orb
-        ? "99.9% HUMAN / ORB VERIFIED"
-        : "99.8% HUMAN / DEVICE VERIFIED",
-    intro:
-      session?.verificationLevel === VerificationLevel.Orb
-        ? "Biological signal confirmed in the World Orb network."
-        : "Trusted device signal confirmed through World verification.",
-    pulseLine: `Verified biological pulse since '${pulseYear}.`,
-    story:
-      "Architecting the live feed one frame at a time. Real moments, synced traces, zero synthetic noise.",
-  };
-}
-
 export function ProofCameraTemplate() {
   const [selectedProof, setSelectedProof] = useState<VerificationLevel>(
     VerificationLevel.Device,
@@ -386,6 +334,12 @@ export function ProofCameraTemplate() {
   const [selectedVibes, setSelectedVibes] = useState<string[]>([]);
   const [metadataSnapshot, setMetadataSnapshot] =
     useState<ProfileMetadataSnapshot | null>(null);
+  const [profileDraft, setProfileDraft] = useState({
+    displayName: "",
+    handle: "",
+    bio: "",
+  });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -394,7 +348,6 @@ export function ProofCameraTemplate() {
   const photosRef = useRef<PhotoCard[]>([]);
   const selectedVibesRef = useRef<string[]>([]);
   const activeProofConfig = getProofConfig(selectedProof);
-  const profileIdentity = createProfileIdentity(proofSession);
   const localTrackedPhotosCount = photos.filter(
     (photo) => photo.humanoProtocol,
   ).length;
@@ -410,9 +363,26 @@ export function ProofCameraTemplate() {
   const photoCount = Math.max(metadataSnapshot?.stats.photoCount ?? 0, photos.length);
   const hasAccess = Boolean(proofSession?.decision.allowCamera);
   const hasCompletedInterests = selectedVibes.length >= 3;
+  const savedProfile = metadataSnapshot?.profile ?? {
+    displayName: "",
+    handle: "",
+    bio: "",
+  };
   const selectedPhoto =
     photos.find((photo) => photo.id === selectedPhotoId) ?? photos[0] ?? null;
   const recentFeedPhotos = photos.slice(0, 4);
+  const profileHasDetails = Boolean(
+    savedProfile.displayName.trim() ||
+      savedProfile.handle.trim() ||
+      savedProfile.bio.trim(),
+  );
+  const profileInitials =
+    savedProfile.displayName
+      .split(" ")
+      .map((part) => part.trim()[0] ?? "")
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "HP";
   const vibeCards = [
     {
       id: "travel",
@@ -527,6 +497,11 @@ export function ProofCameraTemplate() {
     setMetadataSnapshot(snapshot);
     setSelectedVibes(snapshot.interests);
     persistInterests(snapshot.interests);
+    setProfileDraft({
+      displayName: snapshot.profile.displayName,
+      handle: snapshot.profile.handle,
+      bio: snapshot.profile.bio,
+    });
   }, []);
 
   const syncMetadataBootstrap = useCallback(async (
@@ -601,6 +576,57 @@ export function ProofCameraTemplate() {
     } catch (syncError) {
       console.error("Interest sync failed.", syncError);
       return null;
+    }
+  }
+
+  async function syncProfileDetails() {
+    if (!proofSession) {
+      return null;
+    }
+
+    const nextDisplayName = profileDraft.displayName.trim();
+    const nextHandle = profileDraft.handle.trim().replace(/^@+/, "");
+    const nextBio = profileDraft.bio.trim();
+
+    if (!nextDisplayName && !nextHandle && !nextBio) {
+      setError("Add at least a name, handle, or bio before saving your profile.");
+      return null;
+    }
+
+    setIsSavingProfile(true);
+
+    try {
+      const response = await fetch("/api/profile/details", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uploaderKey: proofSession.uploaderKey,
+          displayName: nextDisplayName,
+          handle: nextHandle,
+          bio: nextBio,
+        }),
+      });
+
+      const responseBody = (await response.json()) as ProfileMetadataResponse;
+
+      if (!response.ok || !responseBody.success) {
+        throw new Error(
+          responseBody.success === false
+            ? responseBody.error
+            : "Profile save failed.",
+        );
+      }
+
+      applyMetadataSnapshot(responseBody.snapshot);
+      setNotice("Profile saved.");
+      return responseBody.snapshot;
+    } catch (syncError) {
+      setError(humanizeError(syncError));
+      return null;
+    } finally {
+      setIsSavingProfile(false);
     }
   }
 
@@ -1299,7 +1325,7 @@ export function ProofCameraTemplate() {
         <header className="login-topbar">
           <div className="login-brand">
             <span className="login-brand-mark" />
-            <span className="login-brand-text">HUMANDO</span>
+            <span className="login-brand-text">HUMANO</span>
           </div>
         </header>
 
@@ -1770,7 +1796,7 @@ export function ProofCameraTemplate() {
                     {selectedPhoto ? (
                       <Image
                         src={selectedPhoto.previewUrl}
-                        alt={`${profileIdentity.displayName} avatar`}
+                        alt="Profile avatar"
                         width={256}
                         height={256}
                         className="profile-avatar-image"
@@ -1778,26 +1804,32 @@ export function ProofCameraTemplate() {
                       />
                     ) : (
                       <div className="profile-avatar-fallback">
-                        {profileIdentity.displayName
-                          .split(" ")
-                          .map((part) => part[0])
-                          .join("")}
+                        {profileInitials}
                       </div>
                     )}
                   </div>
-                  <span className="profile-avatar-stamp">{profileIdentity.stamp}</span>
                 </div>
 
-                <span className="profile-credential-pill">{profileIdentity.credential}</span>
+                <span className="profile-credential-pill">
+                  {unlockedSession.verificationLevel === VerificationLevel.Orb
+                    ? "Orb verified"
+                    : "Device verified"}
+                </span>
                 <div>
-                  <h2 className="profile-display-name">{profileIdentity.displayName}</h2>
-                  <div className="profile-handle">@{profileIdentity.handle}</div>
+                  <h2 className="profile-display-name">
+                    {savedProfile.displayName || "Add your profile"}
+                  </h2>
+                  <div className="profile-handle">
+                    {savedProfile.handle ? `@${savedProfile.handle}` : "Add a handle"}
+                  </div>
                 </div>
 
-                <div className="profile-bio">
-                  <p>{profileIdentity.story}</p>
-                  <p className="profile-bio-highlight">{profileIdentity.pulseLine}</p>
-                  <p>{profileIdentity.intro}</p>
+                <div className="profile-bio profile-bio-centered">
+                  {savedProfile.bio ? (
+                    <p>{savedProfile.bio}</p>
+                  ) : (
+                    <p>Write a short bio so your profile feels like yours.</p>
+                  )}
                 </div>
               </div>
 
@@ -1817,55 +1849,74 @@ export function ProofCameraTemplate() {
                 </div>
               ) : null}
 
+              <div className="profile-section-head">
+                <h3>Profile details</h3>
+              </div>
+
+              <div className="profile-form">
+                <label className="profile-field">
+                  <span>Name</span>
+                  <input
+                    type="text"
+                    value={profileDraft.displayName}
+                    onChange={(event) =>
+                      setProfileDraft((current) => ({
+                        ...current,
+                        displayName: event.target.value,
+                      }))
+                    }
+                    placeholder="Your name"
+                    maxLength={40}
+                  />
+                </label>
+                <label className="profile-field">
+                  <span>Handle</span>
+                  <input
+                    type="text"
+                    value={profileDraft.handle}
+                    onChange={(event) =>
+                      setProfileDraft((current) => ({
+                        ...current,
+                        handle: event.target.value.replace(/\s+/g, ""),
+                      }))
+                    }
+                    placeholder="yourhandle"
+                    maxLength={30}
+                  />
+                </label>
+                <label className="profile-field">
+                  <span>Bio</span>
+                  <textarea
+                    value={profileDraft.bio}
+                    onChange={(event) =>
+                      setProfileDraft((current) => ({
+                        ...current,
+                        bio: event.target.value,
+                      }))
+                    }
+                    placeholder="Write a short bio"
+                    rows={3}
+                    maxLength={180}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="action-button action-button-primary profile-save-button"
+                  onClick={() => void syncProfileDetails()}
+                  disabled={isSavingProfile}
+                >
+                  {isSavingProfile ? "Saving..." : profileHasDetails ? "Update profile" : "Save profile"}
+                </button>
+              </div>
+
+              <div className="profile-section-head">
+                <h3>Recent shots</h3>
+              </div>
+
               {photos.length ? (
-                <>
-                  {selectedInterestCards.length ? (
-                    <div className="profile-section-head">
-                      <h3>Interests</h3>
-                    </div>
-                  ) : null}
-
-                  {selectedInterestCards.length ? (
-                    <div className="social-vibe-grid social-vibe-grid-bottom">
-                      {selectedInterestCards.map((card) => (
-                        <article
-                          key={card.id}
-                          className="social-vibe-card social-vibe-card-dark social-vibe-card-detail"
-                        >
-                          <span className={`social-vibe-icon social-vibe-icon-${card.icon}`} />
-                          <strong>{card.label}</strong>
-                          <span>{card.subtitle}</span>
-                        </article>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  <div className="profile-section-head">
-                    <h3>Recent shots</h3>
-                  </div>
-                </>
-              ) : null}
-
-              {photos.length ? (
-                <div className="profile-history-stage">
-                  {selectedPhoto ? (
-                    <button
-                      type="button"
-                      className="profile-feature-card"
-                      onClick={() => openPhoto(selectedPhoto.id)}
-                    >
-                      <Image
-                        src={selectedPhoto.previewUrl}
-                        alt={`Featured ${formatDate(selectedPhoto.createdAt)}`}
-                        width={1200}
-                        height={1200}
-                        className="profile-feature-image"
-                        unoptimized
-                      />
-                    </button>
-                  ) : null}
+                <div className="profile-history-stage profile-history-stage-compact">
                   <div className="profile-history-grid">
-                    {photos.slice(0, 4).map((photo) => (
+                    {photos.slice(0, 6).map((photo) => (
                       <button
                         key={photo.id}
                         type="button"

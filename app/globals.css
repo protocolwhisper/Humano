@@ -795,16 +795,19 @@ video {
 .profile-hero {
   display: grid;
   gap: 14px;
+  justify-items: center;
+  text-align: center;
 }
 
 .profile-avatar-wrap {
   position: relative;
   width: fit-content;
+  margin: 0 auto;
 }
 
 .profile-avatar-ring {
-  width: 104px;
-  height: 104px;
+  width: 96px;
+  height: 96px;
   padding: 4px;
   border-radius: 999px;
   background: linear-gradient(135deg, var(--accent-2), var(--accent));
@@ -829,17 +832,7 @@ video {
   background: radial-gradient(circle at 30% 20%, #425162, #2a313b 70%);
   color: rgba(255, 225, 123, 0.34);
   font-family: var(--font-display);
-  font-size: 2.35rem;
-}
-
-.profile-avatar-stamp {
-  position: absolute;
-  left: 18px;
-  bottom: 10px;
-  color: rgba(255, 225, 123, 0.28);
-  font-family: var(--font-display);
-  font-size: 1.1rem;
-  letter-spacing: -0.04em;
+  font-size: 2rem;
 }
 
 .profile-credential-pill {
@@ -860,7 +853,7 @@ video {
   margin: 2px 0 0;
   color: var(--accent-2);
   font-family: var(--font-display);
-  font-size: clamp(2.2rem, 12vw, 3.3rem);
+  font-size: clamp(1.8rem, 9vw, 2.6rem);
   line-height: 0.92;
   letter-spacing: -0.08em;
   text-shadow: 2px 2px 0 rgba(255, 158, 26, 0.58);
@@ -878,6 +871,10 @@ video {
   gap: 6px;
   color: #d4d1ca;
   line-height: 1.48;
+}
+
+.profile-bio-centered {
+  max-width: 280px;
 }
 
 .profile-bio p {
@@ -1014,6 +1011,10 @@ video {
   margin-top: 18px;
 }
 
+.profile-history-stage-compact {
+  margin-top: 14px;
+}
+
 .profile-feature-card,
 .profile-thumb-card {
   border: 0;
@@ -1036,7 +1037,7 @@ video {
 .profile-history-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
 }
 
 .profile-section-head {
@@ -1053,6 +1054,7 @@ video {
 
 .profile-stat-row {
   display: flex;
+  justify-content: center;
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 18px;
@@ -1073,6 +1075,7 @@ video {
 
 .profile-interest-row {
   display: flex;
+  justify-content: center;
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 14px;
@@ -1088,8 +1091,49 @@ video {
 
 .profile-thumb-image {
   width: 100%;
-  aspect-ratio: 0.82;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
+}
+
+.profile-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.profile-field {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.profile-field span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.profile-field input,
+.profile-field textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #f4efe5;
+  padding: 12px 14px;
+  font: inherit;
+  resize: none;
+}
+
+.profile-field input::placeholder,
+.profile-field textarea::placeholder {
+  color: #7f828a;
+}
+
+.profile-save-button {
+  width: 100%;
+  justify-content: center;
 }
 
 .profile-empty-state {

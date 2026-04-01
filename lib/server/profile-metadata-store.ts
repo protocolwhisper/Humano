@@ -1,6 +1,7 @@
 import type { PoolClient } from "pg";
 
 import type {
+  ProfileMetadataProfile,
   ProfileMetadataSnapshot,
   ProfileMetadataStats,
 } from "@/lib/metadata";
@@ -16,6 +17,13 @@ interface UserSessionMetadataInput {
   verifiedAt: string;
   nullifierHash?: string | null;
   merkleRoot?: string | null;
+}
+
+interface ProfileDetailsInput {
+  uploaderKey: string;
+  displayName: string;
+  handle: string;
+  bio: string;
 }
 
 interface PhotoMetadataInput {
@@ -76,6 +84,11 @@ export async function ensureMetadataSchema() {
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+
+        ALTER TABLE app_users
+          ADD COLUMN IF NOT EXISTS display_name TEXT NOT NULL DEFAULT '',
+          ADD COLUMN IF NOT EXISTS profile_handle TEXT NOT NULL DEFAULT '',
+          ADD COLUMN IF NOT EXISTS profile_bio TEXT NOT NULL DEFAULT '';
 
         CREATE TABLE IF NOT EXISTS user_interests (
           user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
@@ -180,6 +193,19 @@ async function readSnapshotForUser(
   client: PoolClient,
   userId: number,
 ): Promise<ProfileMetadataSnapshot> {
+  const userResult = await client.query<{
+    display_name: string;
+    profile_handle: string;
+    profile_bio: string;
+  }>(
+    `
+      SELECT display_name, profile_handle, profile_bio
+      FROM app_users
+      WHERE id = $1
+    `,
+    [userId],
+  );
+
   const interestsResult = await client.query<{ interest_key: string }>(
     `
       SELECT interest_key
@@ -213,15 +239,22 @@ async function readSnapshotForUser(
   );
 
   const statsRow = statsResult.rows[0];
+  const userRow = userResult.rows[0];
   const stats: ProfileMetadataStats = {
     photoCount: Number(statsRow?.photo_count ?? 0),
     filecoinCount: Number(statsRow?.filecoin_count ?? 0),
     humanoCount: Number(statsRow?.humano_count ?? 0),
   };
+  const profile: ProfileMetadataProfile = {
+    displayName: userRow?.display_name ?? "",
+    handle: userRow?.profile_handle ?? "",
+    bio: userRow?.profile_bio ?? "",
+  };
 
   return {
     interests: interestsResult.rows.map((row) => row.interest_key),
     stats,
+    profile,
   };
 }
 
@@ -244,6 +277,11 @@ export async function getProfileSnapshot(
           filecoinCount: 0,
           humanoCount: 0,
         },
+        profile: {
+          displayName: "",
+          handle: "",
+          bio: "",
+        },
       };
     }
 
@@ -258,6 +296,37 @@ export async function upsertUserSession(input: UserSessionMetadataInput) {
 
   return withTransaction(async (client) => {
     await ensureUserRecord(client, input);
+  });
+}
+
+export async function updateUserProfileDetails(input: ProfileDetailsInput) {
+  await ensureMetadataSchema();
+
+  const normalizedDisplayName = input.displayName.trim();
+  const normalizedHandle = input.handle.trim().replace(/^@+/, "");
+  const normalizedBio = input.bio.trim();
+
+  return withTransaction(async (client) => {
+    const userId = await getUserId(client, input.uploaderKey);
+
+    if (!userId) {
+      throw new Error("User session metadata was not found for this uploader.");
+    }
+
+    await client.query(
+      `
+        UPDATE app_users
+        SET
+          display_name = $2,
+          profile_handle = $3,
+          profile_bio = $4,
+          updated_at = NOW()
+        WHERE id = $1
+      `,
+      [userId, normalizedDisplayName, normalizedHandle, normalizedBio],
+    );
+
+    return readSnapshotForUser(client, userId);
   });
 }
 
@@ -378,6 +447,11 @@ export async function markPhotoDeleted(photoId: string, uploaderKey: string) {
           filecoinCount: 0,
           humanoCount: 0,
         },
+        profile: {
+          displayName: "",
+          handle: "",
+          bio: "",
+        },
       };
     }
 
@@ -410,6 +484,11 @@ export async function clearUserPhotos(uploaderKey: string) {
           photoCount: 0,
           filecoinCount: 0,
           humanoCount: 0,
+        },
+        profile: {
+          displayName: "",
+          handle: "",
+          bio: "",
         },
       };
     }
@@ -465,6 +544,11 @@ export async function attachFilecoinMetadata(input: FilecoinMetadataInput) {
           filecoinCount: 0,
           humanoCount: 0,
         },
+        profile: {
+          displayName: "",
+          handle: "",
+          bio: "",
+        },
       };
     }
 
@@ -508,6 +592,11 @@ export async function attachHumanoMetadata(input: HumanoMetadataInput) {
           photoCount: 0,
           filecoinCount: 0,
           humanoCount: 0,
+        },
+        profile: {
+          displayName: "",
+          handle: "",
+          bio: "",
         },
       };
     }
