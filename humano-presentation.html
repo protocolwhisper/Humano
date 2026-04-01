@@ -145,7 +145,7 @@
       .slide-inner {
         position: relative;
         z-index: 1;
-        width: min(1280px, 100%);
+        width: min(1480px, 100%);
         margin: 0 auto;
         display: grid;
         gap: 28px;
@@ -419,13 +419,13 @@
 
       .money-layout {
         display: grid;
-        grid-template-columns: minmax(0, 0.95fr) minmax(400px, 1.05fr);
-        gap: 28px;
-        align-items: center;
+        grid-template-columns: minmax(360px, 0.9fr) minmax(760px, 1.1fr);
+        gap: 36px;
+        align-items: start;
       }
 
       .money-panel {
-        padding: 24px;
+        padding: 34px;
         border-radius: 26px;
         background:
           radial-gradient(circle at top right, rgba(255, 151, 16, 0.16), transparent 32%),
@@ -440,6 +440,37 @@
         color: var(--muted);
         line-height: 1.55;
         font-size: 1.02rem;
+      }
+
+      .money-layout h2 {
+        font-size: clamp(3.6rem, 7vw, 6.2rem);
+        max-width: 7ch;
+      }
+
+      .money-grid {
+        grid-template-columns: repeat(3, minmax(220px, 1fr));
+        gap: 22px;
+      }
+
+      .money-card {
+        min-height: 470px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        padding: 30px 26px;
+      }
+
+      .money-card h3 {
+        font-size: clamp(1.55rem, 2vw, 2.25rem);
+        line-height: 0.9;
+        letter-spacing: -0.02em;
+        overflow-wrap: anywhere;
+      }
+
+      .money-card p {
+        margin-top: 8px;
+        font-size: 0.96rem;
+        line-height: 1.45;
       }
 
       .nav-left,
@@ -801,7 +832,7 @@
                   <div class="money-grid">
                     <article class="money-card">
                       <span>API FEES</span>
-                      <h3>Verification infrastructure</h3>
+                      <h3>Verification<br />infrastructure</h3>
                       <p>
                         Charge platforms per proof check, capture unlock, and provenance read.
                       </p>
@@ -809,7 +840,7 @@
 
                     <article class="money-card">
                       <span>SAAS</span>
-                      <h3>Creator and community tools</h3>
+                      <h3>Creator and<br />community tools</h3>
                       <p>
                         Sell premium dashboards for verified posting, moderation, and reputation.
                       </p>
@@ -817,7 +848,7 @@
 
                     <article class="money-card">
                       <span>NETWORK</span>
-                      <h3>Content commerce rails</h3>
+                      <h3>Content<br />commerce rails</h3>
                       <p>
                         Take a fee when verified media is licensed, syndicated, or bought.
                       </p>

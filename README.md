@@ -1,13 +1,22 @@
-# ProofCam
+# HUMANO
 
-World App Mini App template with:
+World App mini app for:
 
-- device proof by default
-- Orb human proof option
-- camera capture after verification
-- local photo storage inside the app
-- optional Filecoin Calibration upload with Synapse SDK
-- optional FEVM contract tracking with Foundry + Humano Protocol
+- World ID login
+- verified camera capture
+- local feed + profile
+- optional Filecoin Calibration sync
+- optional Humano onchain tracking
+
+## Open the app
+
+Live app:
+
+- [https://humano-neon.vercel.app/](https://humano-neon.vercel.app/)
+
+Scan this QR on your phone:
+
+![Humando app QR](https://api.qrserver.com/v1/create-qr-code/?size=345x240&data=https%3A%2F%2Fhumano-neon.vercel.app%2F)
 
 ## Run locally
 
@@ -22,69 +31,20 @@ pnpm dev
 ```env
 APP_ID=app_replace_me
 RP_ID=rp_replace_me
+DATABASE_URL=postgresql://user:password@host:5432/database
+
 NEXT_PUBLIC_WORLD_ACTION_DEVICE=unlock-camera-device
 NEXT_PUBLIC_WORLD_ACTION_HUMAN=unlock-camera-human
-NEXT_PUBLIC_ALLOW_DEV_BYPASS=true
+NEXT_PUBLIC_ALLOW_DEV_BYPASS=false
+
 FILECOIN_WALLET_PRIVATE_KEY=0xreplace_me
 FILECOIN_RPC_URL=https://api.calibration.node.glif.io/rpc/v1
 HUMANO_PROTOCOL_CONTRACT_ADDRESS=0xreplace_me
 ```
 
-## How it works
+## Notes
 
-1. User opens the mini app.
-2. World App generates a proof payload for the camera-unlock action.
-3. Device proof is the default option.
-4. The server verifies that proof.
-5. The app turns the verified result into a camera-session unlock.
-6. The user can take multiple photos in that verified session.
-7. Each photo is saved locally in IndexedDB.
-8. Each photo can also be uploaded to Filecoin Calibration.
-9. Each Filecoin-backed photo can be recorded onchain in `humano_protocol`.
-
-## UI flow
-
-- `Local saved` means the image is in the mini app gallery.
-- `Filecoin synced` means the image bytes are stored on Filecoin Calibration.
-- `Humano tracked` means the Filecoin-backed image was also recorded onchain in the `humano_protocol` contract.
-
-## Important
-
-- `NEXT_PUBLIC_ALLOW_DEV_BYPASS=true` is only for local development.
-- Replace `APP_ID`, `RP_ID`, and action ids with your real World credentials before demo/submission.
-- Real verification works inside World App or the simulator.
-- Filecoin upload needs a funded Calibration wallet in `FILECOIN_WALLET_PRIVATE_KEY`.
-- Onchain tracking needs `HUMANO_PROTOCOL_CONTRACT_ADDRESS` after you deploy the contract.
-
-## Foundry deploy
-
-Build the contract:
-
-```bash
-forge build
-```
-
-Deploy to Calibration:
-
-```bash
-bash script/deploy-humano-protocol.sh
-```
-
-After deploy, copy the contract address into:
-
-```env
-HUMANO_PROTOCOL_CONTRACT_ADDRESS=0x...
-```
-
-## Still needed for submission
-
-- add real World credentials
-- fund and configure the Filecoin Calibration wallet
-- deploy `humano_protocol` to Calibration
-- deploy publicly
-- connect the final World Chain part if needed
-- push this repo to GitHub
-
-## Docs
-
-- [World Docs](https://docs.world.org/)
+- real verification works inside World App
+- photos stay local first, then can sync to Filecoin
+- metadata is stored in Postgres
+- Filecoin sync uses Calibration testnet
