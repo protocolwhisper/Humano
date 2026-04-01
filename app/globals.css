@@ -1061,6 +1061,10 @@ video {
 }
 
 .profile-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   margin-top: 22px;
 }
 
@@ -1070,6 +1074,14 @@ video {
   font-size: 1.35rem;
   line-height: 1;
   letter-spacing: -0.04em;
+}
+
+.profile-logout-button {
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  white-space: nowrap;
 }
 
 .profile-stat-row {

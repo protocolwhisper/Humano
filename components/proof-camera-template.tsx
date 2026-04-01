@@ -1039,6 +1039,14 @@ export function ProofCameraTemplate() {
     setActiveTab("user");
   }
 
+  function handleLogout() {
+    stopActiveStream(streamRef, videoRef);
+    resetMessages();
+    updateProofSession(null);
+    setActiveTab("feed");
+    setNotice("Logged out. Sign in with World ID again.");
+  }
+
   function openPhoto(photoId: string) {
     setSelectedPhotoId(photoId);
     setActiveTab("feed");
@@ -1837,6 +1845,13 @@ export function ProofCameraTemplate() {
 
               <div className="profile-section-head">
                 <h3>Profile details</h3>
+                <button
+                  type="button"
+                  className="action-button profile-logout-button"
+                  onClick={handleLogout}
+                >
+                  Log out
+                </button>
               </div>
 
               <div className="profile-form">
