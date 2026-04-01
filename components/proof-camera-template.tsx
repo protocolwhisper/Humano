@@ -345,6 +345,7 @@ export function ProofCameraTemplate() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const quickCaptureInputRef = useRef<HTMLInputElement | null>(null);
+  const selectedShotRef = useRef<HTMLDivElement | null>(null);
   const photosRef = useRef<PhotoCard[]>([]);
   const selectedVibesRef = useRef<string[]>([]);
   const activeProofConfig = getProofConfig(selectedProof);
@@ -370,7 +371,7 @@ export function ProofCameraTemplate() {
   };
   const selectedPhoto =
     photos.find((photo) => photo.id === selectedPhotoId) ?? photos[0] ?? null;
-  const recentFeedPhotos = photos.slice(0, 3);
+  const feedPhotos = photos;
   const profileHasDetails = Boolean(
     savedProfile.displayName.trim() ||
       savedProfile.handle.trim() ||
@@ -450,10 +451,15 @@ export function ProofCameraTemplate() {
 
     try {
       const storedPhotos = await listPhotos();
-      const nextPhotos = storedPhotos.map((photo) => ({
-        ...photo,
-        previewUrl: URL.createObjectURL(photo.blob),
-      }));
+      const nextPhotos = storedPhotos
+        .map((photo) => ({
+          ...photo,
+          previewUrl: URL.createObjectURL(photo.blob),
+        }))
+        .sort(
+          (left, right) =>
+            new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+        );
 
       setPhotos((current) => {
         revokePhotoUrls(current);
@@ -1036,6 +1042,12 @@ export function ProofCameraTemplate() {
   function openPhoto(photoId: string) {
     setSelectedPhotoId(photoId);
     setActiveTab("feed");
+    requestAnimationFrame(() => {
+      selectedShotRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
   }
 
   function openCaptureAction() {
@@ -1457,7 +1469,59 @@ export function ProofCameraTemplate() {
                     </div>
                   </div>
 
-                  <div className="viewer-stage viewer-stage-compact">
+                  <div className="feed-grid-shell">
+                    <div className="feed-grid-head">
+                      <h3>Recent shots</h3>
+                      <span>Tap a thumbnail to manage that shot.</span>
+                    </div>
+
+                    <div className="feed-grid">
+                      {feedPhotos.map((photo) => (
+                        <button
+                          key={photo.id}
+                          type="button"
+                          className={`feed-card ${selectedPhoto.id === photo.id ? "selected" : ""}`}
+                          onClick={() => openPhoto(photo.id)}
+                        >
+                          <span className="feed-card-media">
+                            <Image
+                              src={photo.previewUrl}
+                              alt={`Captured ${formatDate(photo.createdAt)}`}
+                              width={480}
+                              height={480}
+                              unoptimized
+                            />
+                          </span>
+                          <span className="feed-card-body">
+                            <span className="feed-handle">
+                              @{formatCompactHash(photo.id).replaceAll(".", "")}
+                            </span>
+                            <span className="feed-caption">{formatDate(photo.createdAt)}</span>
+                            <span className="status-row status-row-compact">
+                              <span className="pill pill-success">LOCAL</span>
+                              <span
+                                className={`pill ${photo.filecoin ? "pill-success" : "pill-muted"}`}
+                              >
+                                {photo.filecoin ? "FILECOIN" : "PENDING"}
+                              </span>
+                              <span
+                                className={`pill ${
+                                  photo.humanoProtocol ? "pill-success" : "pill-muted"
+                                }`}
+                              >
+                                {photo.humanoProtocol ? "HUMANO" : "OFFCHAIN"}
+                              </span>
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div
+                    className="viewer-stage viewer-stage-compact"
+                    ref={selectedShotRef}
+                  >
                     <div className="viewer-media viewer-media-compact">
                       <Image
                         src={selectedPhoto.previewUrl}
@@ -1535,27 +1599,6 @@ export function ProofCameraTemplate() {
                           DROP
                         </button>
                       </div>
-
-                      {recentFeedPhotos.length > 1 ? (
-                        <div className="feed-thumb-row">
-                          {recentFeedPhotos.map((photo) => (
-                            <button
-                              key={photo.id}
-                              type="button"
-                              className={`feed-thumb ${selectedPhoto.id === photo.id ? "selected" : ""}`}
-                              onClick={() => openPhoto(photo.id)}
-                            >
-                              <Image
-                                src={photo.previewUrl}
-                                alt={`Captured ${formatDate(photo.createdAt)}`}
-                                width={320}
-                                height={320}
-                                unoptimized
-                              />
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
 
                       <div className="action-strip action-strip-tight viewer-utility-row">
                         <button
