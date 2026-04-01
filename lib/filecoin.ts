@@ -6,6 +6,7 @@ export interface FilecoinUploadSuccessResponse {
   filecoin: FilecoinPhotoRecord;
   humanoProtocol?: HumanoProtocolRecord | null;
   humanoProtocolError?: string | null;
+  metadataError?: string | null;
 }
 
 export interface FilecoinUploadErrorResponse {
@@ -16,6 +17,7 @@ export interface FilecoinUploadErrorResponse {
 export interface HumanoProtocolRecordSuccessResponse {
   success: true;
   humanoProtocol: HumanoProtocolRecord;
+  metadataError?: string | null;
 }
 
 export interface HumanoProtocolRecordErrorResponse {

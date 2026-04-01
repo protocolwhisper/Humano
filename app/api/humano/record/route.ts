@@ -2,15 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { type HumanoProtocolRecord } from "@/lib/humano-protocol";
 import { recordHumanoProtocolUpload } from "@/lib/server/humano-protocol-recorder";
+import {
+  attachHumanoMetadata,
+  upsertPhotoMetadata,
+} from "@/lib/server/profile-metadata-store";
 
 export const runtime = "nodejs";
 
 interface RecordRequestBody {
+  photoId?: string;
   uploaderKey: string;
   pieceCid: string;
   worldAction: string;
   verificationLevel: string;
   createdAt: string;
+  mimeType?: string;
   size: number;
   retrievalUrl?: string | null;
 }
@@ -73,12 +79,44 @@ export async function POST(request: NextRequest) {
       retrievalUrl: body.retrievalUrl ?? null,
     });
 
+    let metadataError: string | null = null;
+
+    if (
+      typeof body.photoId === "string" &&
+      body.photoId &&
+      typeof body.uploaderKey === "string" &&
+      body.uploaderKey
+    ) {
+      try {
+        await upsertPhotoMetadata({
+          photoId: body.photoId,
+          uploaderKey: body.uploaderKey,
+          createdAt: body.createdAt,
+          mimeType: body.mimeType ?? "image/jpeg",
+          verificationLevel: body.verificationLevel,
+          worldAction: body.worldAction,
+        });
+        await attachHumanoMetadata({
+          photoId: body.photoId,
+          uploaderKey: body.uploaderKey,
+          humanoProtocol,
+        });
+      } catch (error) {
+        metadataError =
+          error instanceof Error
+            ? error.message
+            : "Postgres metadata sync failed.";
+      }
+    }
+
     return NextResponse.json({
       success: true,
       humanoProtocol,
+      metadataError,
     } as {
       success: true;
       humanoProtocol: HumanoProtocolRecord;
+      metadataError?: string | null;
     });
   } catch (error) {
     return NextResponse.json(

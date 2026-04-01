@@ -13,6 +13,7 @@
     "@filoz/synapse-sdk": "^0.40.1",
     "@worldcoin/minikit-js": "^1.9.6",
     "next": "^15.0.0",
+    "pg": "^8.20.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "viem": "^2.47.6"

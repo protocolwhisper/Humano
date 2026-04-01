@@ -5,6 +5,7 @@ import { keccak256, stringToHex } from "viem";
 import {
   type ChangeEvent,
   type MutableRefObject,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -30,6 +31,10 @@ import {
   type FilecoinUploadResponse,
 } from "@/lib/filecoin";
 import type { HumanoProtocolRecord } from "@/lib/humano-protocol";
+import type {
+  ProfileMetadataResponse,
+  ProfileMetadataSnapshot,
+} from "@/lib/metadata";
 import {
   getProofConfig,
   isDevBypassEnabled,
@@ -379,18 +384,30 @@ export function ProofCameraTemplate() {
   const [trackingPhotoId, setTrackingPhotoId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"feed" | "explore" | "chain" | "user">("feed");
   const [selectedVibes, setSelectedVibes] = useState<string[]>([]);
+  const [metadataSnapshot, setMetadataSnapshot] =
+    useState<ProfileMetadataSnapshot | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const quickCaptureInputRef = useRef<HTMLInputElement | null>(null);
   const photosRef = useRef<PhotoCard[]>([]);
+  const selectedVibesRef = useRef<string[]>([]);
   const activeProofConfig = getProofConfig(selectedProof);
   const profileIdentity = createProfileIdentity(proofSession);
-  const trackedPhotosCount = photos.filter(
+  const localTrackedPhotosCount = photos.filter(
     (photo) => photo.humanoProtocol,
   ).length;
-  const filecoinPhotosCount = photos.filter((photo) => photo.filecoin).length;
+  const localFilecoinPhotosCount = photos.filter((photo) => photo.filecoin).length;
+  const trackedPhotosCount = Math.max(
+    metadataSnapshot?.stats.humanoCount ?? 0,
+    localTrackedPhotosCount,
+  );
+  const filecoinPhotosCount = Math.max(
+    metadataSnapshot?.stats.filecoinCount ?? 0,
+    localFilecoinPhotosCount,
+  );
+  const photoCount = Math.max(metadataSnapshot?.stats.photoCount ?? 0, photos.length);
   const hasAccess = Boolean(proofSession?.decision.allowCamera);
   const hasCompletedInterests = selectedVibes.length >= 3;
   const selectedPhoto =
@@ -506,6 +523,183 @@ export function ProofCameraTemplate() {
     persistProofSession(session);
   }
 
+  const applyMetadataSnapshot = useCallback((snapshot: ProfileMetadataSnapshot) => {
+    setMetadataSnapshot(snapshot);
+    setSelectedVibes(snapshot.interests);
+    persistInterests(snapshot.interests);
+  }, []);
+
+  const syncMetadataBootstrap = useCallback(async (
+    session: ProofSession,
+    fallbackInterests: string[],
+  ) => {
+    try {
+      const response = await fetch("/api/profile/bootstrap", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uploaderKey: session.uploaderKey,
+          verificationLevel: session.verificationLevel,
+          action: session.action,
+          source: session.source,
+          verifiedAt: session.verifiedAt,
+          nullifierHash: session.nullifierHash ?? null,
+          merkleRoot: session.merkleRoot ?? null,
+          interests: fallbackInterests,
+        }),
+      });
+
+      const responseBody = (await response.json()) as ProfileMetadataResponse;
+
+      if (!response.ok || !responseBody.success) {
+        throw new Error(
+          responseBody.success === false
+            ? responseBody.error
+            : "Profile bootstrap failed.",
+        );
+      }
+
+      applyMetadataSnapshot(responseBody.snapshot);
+      return responseBody.snapshot;
+    } catch (syncError) {
+      console.error("Profile bootstrap sync failed.", syncError);
+      return null;
+    }
+  }, [applyMetadataSnapshot]);
+
+  async function syncInterestsMetadata(interests: string[]) {
+    if (!proofSession) {
+      return null;
+    }
+
+    try {
+      const response = await fetch("/api/profile/interests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uploaderKey: proofSession.uploaderKey,
+          interests,
+        }),
+      });
+
+      const responseBody = (await response.json()) as ProfileMetadataResponse;
+
+      if (!response.ok || !responseBody.success) {
+        throw new Error(
+          responseBody.success === false
+            ? responseBody.error
+            : "Interest sync failed.",
+        );
+      }
+
+      applyMetadataSnapshot(responseBody.snapshot);
+      return responseBody.snapshot;
+    } catch (syncError) {
+      console.error("Interest sync failed.", syncError);
+      return null;
+    }
+  }
+
+  async function syncPhotoMetadata(photo: StoredPhoto) {
+    try {
+      const response = await fetch("/api/photos/metadata", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          photoId: photo.id,
+          uploaderKey: photo.uploaderKey,
+          createdAt: photo.createdAt,
+          mimeType: photo.mimeType,
+          verificationLevel: photo.verificationLevel,
+          worldAction: photo.worldAction ?? "unknown-action",
+        }),
+      });
+
+      const responseBody = (await response.json()) as ProfileMetadataResponse;
+
+      if (!response.ok || !responseBody.success) {
+        throw new Error(
+          responseBody.success === false
+            ? responseBody.error
+            : "Photo metadata sync failed.",
+        );
+      }
+
+      applyMetadataSnapshot(responseBody.snapshot);
+      return responseBody.snapshot;
+    } catch (syncError) {
+      console.error("Photo metadata sync failed.", syncError);
+      return null;
+    }
+  }
+
+  async function syncDeletedPhotoMetadata(photoId: string, uploaderKey: string) {
+    try {
+      const response = await fetch("/api/photos/metadata", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          photoId,
+          uploaderKey,
+        }),
+      });
+
+      const responseBody = (await response.json()) as ProfileMetadataResponse;
+
+      if (!response.ok || !responseBody.success) {
+        throw new Error(
+          responseBody.success === false
+            ? responseBody.error
+            : "Photo deletion sync failed.",
+        );
+      }
+
+      applyMetadataSnapshot(responseBody.snapshot);
+      return responseBody.snapshot;
+    } catch (syncError) {
+      console.error("Photo deletion sync failed.", syncError);
+      return null;
+    }
+  }
+
+  async function syncClearedLibraryMetadata(uploaderKey: string) {
+    try {
+      const response = await fetch("/api/photos/metadata", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          uploaderKey,
+        }),
+      });
+
+      const responseBody = (await response.json()) as ProfileMetadataResponse;
+
+      if (!response.ok || !responseBody.success) {
+        throw new Error(
+          responseBody.success === false
+            ? responseBody.error
+            : "Library clear sync failed.",
+        );
+      }
+
+      applyMetadataSnapshot(responseBody.snapshot);
+      return responseBody.snapshot;
+    } catch (syncError) {
+      console.error("Library clear sync failed.", syncError);
+      return null;
+    }
+  }
+
   async function unlockWithDevBypass() {
     const verifiedAt = new Date().toISOString();
     const bypassSession: ProofSession = {
@@ -526,7 +720,9 @@ export function ProofCameraTemplate() {
     };
 
     updateProofSession(bypassSession);
-    setActiveTab(hasCompletedInterests ? "feed" : "explore");
+    const snapshot = await syncMetadataBootstrap(bypassSession, selectedVibes);
+    const nextInterestsCount = snapshot?.interests.length ?? selectedVibes.length;
+    setActiveTab(nextInterestsCount >= 3 ? "feed" : "explore");
     setNotice("Dev bypass active.");
   }
 
@@ -643,7 +839,9 @@ export function ProofCameraTemplate() {
       };
 
       updateProofSession(verifiedSession);
-      setActiveTab(hasCompletedInterests ? "feed" : "explore");
+      const snapshot = await syncMetadataBootstrap(verifiedSession, selectedVibes);
+      const nextInterestsCount = snapshot?.interests.length ?? selectedVibes.length;
+      setActiveTab(nextInterestsCount >= 3 ? "feed" : "explore");
       setNotice("Verified. Camera unlocked.");
     } catch (verifyError) {
       setError(humanizeError(verifyError));
@@ -672,6 +870,7 @@ export function ProofCameraTemplate() {
       };
 
       await savePhoto(nextPhoto);
+      void syncPhotoMetadata(nextPhoto);
       await refreshGallery(nextPhoto.id);
       setSelectedPhotoId(nextPhoto.id);
       setActiveTab("feed");
@@ -700,7 +899,12 @@ export function ProofCameraTemplate() {
     resetMessages();
 
     try {
+      const targetPhoto = photos.find((photo) => photo.id === id);
+
       await deletePhoto(id);
+      if (targetPhoto?.uploaderKey) {
+        void syncDeletedPhotoMetadata(id, targetPhoto.uploaderKey);
+      }
       await refreshGallery();
       setNotice("Photo removed.");
     } catch (deleteError) {
@@ -724,6 +928,7 @@ export function ProofCameraTemplate() {
       formData.append("verificationLevel", photo.verificationLevel);
       formData.append("worldAction", photo.worldAction ?? "unknown-action");
       formData.append("uploaderKey", photo.uploaderKey ?? proofSession?.uploaderKey ?? "");
+      formData.append("photoId", photo.id);
 
       const response = await fetch("/api/filecoin/upload", {
         method: "POST",
@@ -756,7 +961,9 @@ export function ProofCameraTemplate() {
           ? "Synced to Filecoin and tracked on Humano."
           : responseBody.humanoProtocolError
             ? `Filecoin synced, Humano failed: ${responseBody.humanoProtocolError}`
-            : "Synced to Filecoin.",
+            : responseBody.metadataError
+              ? `Synced to Filecoin. Metadata warning: ${responseBody.metadataError}`
+              : "Synced to Filecoin.",
       );
     } catch (uploadError) {
       setError(humanizeError(uploadError));
@@ -770,6 +977,9 @@ export function ProofCameraTemplate() {
 
     try {
       await clearPhotos();
+      if (proofSession?.uploaderKey) {
+        void syncClearedLibraryMetadata(proofSession.uploaderKey);
+      }
       await refreshGallery();
       setNotice("Library cleared.");
     } catch (clearError) {
@@ -837,6 +1047,7 @@ export function ProofCameraTemplate() {
     }
 
     persistInterests(selectedVibes);
+    void syncInterestsMetadata(selectedVibes);
     setActiveTab("feed");
     setNotice("Interests saved.");
   }
@@ -858,11 +1069,13 @@ export function ProofCameraTemplate() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          photoId: photo.id,
           uploaderKey: photo.uploaderKey,
           pieceCid: photo.filecoin.pieceCid,
           worldAction: photo.worldAction ?? "unknown-action",
           verificationLevel: photo.verificationLevel,
           createdAt: photo.createdAt,
+          mimeType: photo.mimeType,
           size: photo.filecoin.size,
           retrievalUrl: photo.filecoin.retrievalUrl,
         }),
@@ -887,7 +1100,11 @@ export function ProofCameraTemplate() {
 
       await savePhoto(updatedPhoto);
       await refreshGallery();
-      setNotice("Tracked on Humano.");
+      setNotice(
+        responseBody.metadataError
+          ? `Tracked on Humano. Metadata warning: ${responseBody.metadataError}`
+          : "Tracked on Humano.",
+      );
     } catch (recordError) {
       setError(humanizeError(recordError));
     } finally {
@@ -926,6 +1143,13 @@ export function ProofCameraTemplate() {
       setProofSession(activeSession);
       persistProofSession(activeSession);
       setActiveTab(storedInterests.length >= 3 ? "feed" : "explore");
+      void syncMetadataBootstrap(activeSession, storedInterests).then((snapshot) => {
+        if (!snapshot) {
+          return;
+        }
+
+        setActiveTab(snapshot.interests.length >= 3 ? "feed" : "explore");
+      });
     }
 
     void (async () => {
@@ -967,11 +1191,15 @@ export function ProofCameraTemplate() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, []);
+  }, [syncMetadataBootstrap]);
 
   useEffect(() => {
     photosRef.current = photos;
   }, [photos]);
+
+  useEffect(() => {
+    selectedVibesRef.current = selectedVibes;
+  }, [selectedVibes]);
 
   useEffect(() => {
     if (!notice && !error) {
@@ -1047,6 +1275,7 @@ export function ProofCameraTemplate() {
       }
 
       restoreActiveSession(storedSession);
+      void syncMetadataBootstrap(storedSession, selectedVibesRef.current);
     }
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -1055,7 +1284,7 @@ export function ProofCameraTemplate() {
       window.clearTimeout(timeoutId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [proofSession]);
+  }, [proofSession, syncMetadataBootstrap]);
 
   useEffect(() => {
     return () => {
@@ -1199,7 +1428,7 @@ export function ProofCameraTemplate() {
               </div>
               <div className="feed-overview-stats">
                 <span className="mini-indicator">{proofLabel(unlockedSession.verificationLevel)}</span>
-                <span className="mini-indicator">{photos.length} shot{photos.length === 1 ? "" : "s"}</span>
+                <span className="mini-indicator">{photoCount} shot{photoCount === 1 ? "" : "s"}</span>
                 <span className="mini-indicator">{trackedPhotosCount} tracked</span>
               </div>
             </section>
@@ -1373,7 +1602,7 @@ export function ProofCameraTemplate() {
                 </div>
               ) : (
                 <div className="empty-feed">
-                  <strong>No pulse yet.</strong>
+                  <strong>No posts yet.</strong>
                   <span>
                     Verify the session, shoot a photo, then sync it through Filecoin
                     and Humano to light up this feed.
@@ -1573,7 +1802,7 @@ export function ProofCameraTemplate() {
               </div>
 
               <div className="profile-stat-row">
-                <span className="profile-stat-pill">{photos.length} shots</span>
+                <span className="profile-stat-pill">{photoCount} posts</span>
                 <span className="profile-stat-pill">{selectedInterestCards.length} interests</span>
                 <span className="profile-stat-pill">{trackedPhotosCount} proofs</span>
               </div>

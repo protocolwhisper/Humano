@@ -6,6 +6,11 @@ import { http } from "viem";
 import type { FilecoinUploadSuccessResponse } from "@/lib/filecoin";
 import { type HumanoProtocolRecord } from "@/lib/humano-protocol";
 import { recordHumanoProtocolUpload } from "@/lib/server/humano-protocol-recorder";
+import {
+  attachFilecoinMetadata,
+  attachHumanoMetadata,
+  upsertPhotoMetadata,
+} from "@/lib/server/profile-metadata-store";
 
 export const runtime = "nodejs";
 
@@ -36,6 +41,7 @@ export async function POST(request: NextRequest) {
   const verificationLevel = formData.get("verificationLevel");
   const worldAction = formData.get("worldAction");
   const uploaderKey = formData.get("uploaderKey");
+  const photoId = formData.get("photoId");
 
   if (!(file instanceof File)) {
     return NextResponse.json(
@@ -64,6 +70,7 @@ export async function POST(request: NextRequest) {
     let transactionHash: string | null = null;
     let humanoProtocol: HumanoProtocolRecord | null = null;
     let humanoProtocolError: string | null = null;
+    let metadataError: string | null = null;
 
     const synapse = Synapse.create({
       account,
@@ -134,7 +141,45 @@ export async function POST(request: NextRequest) {
       },
       humanoProtocol,
       humanoProtocolError,
+      metadataError,
     };
+
+    if (
+      typeof photoId === "string" &&
+      photoId &&
+      typeof uploaderKey === "string" &&
+      uploaderKey
+    ) {
+      try {
+        await upsertPhotoMetadata({
+          photoId,
+          uploaderKey,
+          createdAt,
+          mimeType: file.type || "image/jpeg",
+          verificationLevel,
+          worldAction,
+        });
+        await attachFilecoinMetadata({
+          photoId,
+          uploaderKey,
+          filecoin: responseBody.filecoin,
+        });
+
+        if (humanoProtocol) {
+          await attachHumanoMetadata({
+            photoId,
+            uploaderKey,
+            humanoProtocol,
+          });
+        }
+      } catch (error) {
+        metadataError =
+          error instanceof Error
+            ? error.message
+            : "Postgres metadata sync failed.";
+        responseBody.metadataError = metadataError;
+      }
+    }
 
     return NextResponse.json(responseBody);
   } catch (error) {
